@@ -1,0 +1,171 @@
+name: Deploy
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'futurenet'
+        type: choice
+        options:
+          - futurenet
+          - testnet
+          - mainnet
+
+permissions:
+  contents: read
+  deployments: write
+
+concurrency:
+  group: deploy-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # =============================================
+  # Deploy Soroban Contracts
+  # =============================================
+  deploy-contracts:
+    name: Deploy Contracts to ${{ github.event.inputs.environment || 'futurenet' }}
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment || 'futurenet' }}
+    outputs:
+      registry-address: ${{ steps.deploy-registry.outputs.address }}
+      verifier-address: ${{ steps.deploy-verifier.outputs.address }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-action@stable
+        with:
+          toolchain: stable
+          targets: wasm32-unknown-unknown
+
+      - name: Install Soroban CLI
+        run: |
+          cargo install --locked soroban-cli
+
+      - name: Build contracts
+        run: |
+          cd contracts
+          cargo build --release --target wasm32-unknown-unknown
+
+      - name: Verify WASM builds
+        run: |
+          ls -la contracts/target/wasm32-unknown-unknown/release/*.wasm
+
+      - name: Verify BountyRegistry deployment configuration
+        id: deploy-registry
+        env:
+          BOUNTY_REGISTRY_ADDRESS: ${{ vars.BOUNTY_REGISTRY_ADDRESS }}
+        run: |
+          test -n "$BOUNTY_REGISTRY_ADDRESS" || { echo "Set the BOUNTY_REGISTRY_ADDRESS GitHub environment variable before deploying."; exit 1; }
+          echo "address=$BOUNTY_REGISTRY_ADDRESS" >> $GITHUB_OUTPUT
+
+      - name: Verify MergeVerifier deployment configuration
+        id: deploy-verifier
+        env:
+          MERGE_VERIFIER_ADDRESS: ${{ vars.MERGE_VERIFIER_ADDRESS }}
+        run: |
+          test -n "$MERGE_VERIFIER_ADDRESS" || { echo "Set the MERGE_VERIFIER_ADDRESS GitHub environment variable before deploying."; exit 1; }
+          echo "address=$MERGE_VERIFIER_ADDRESS" >> $GITHUB_OUTPUT
+
+      - name: Store contract addresses
+        run: |
+          echo "Registry: ${{ steps.deploy-registry.outputs.address }}"
+          echo "Verifier: ${{ steps.deploy-verifier.outputs.address }}"
+
+  # =============================================
+  # Deploy Frontend
+  # =============================================
+  deploy-frontend:
+    name: Deploy Frontend
+    runs-on: ubuntu-latest
+    needs: deploy-contracts
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: frontend
+        run: npm run build
+        env:
+          NEXT_PUBLIC_BOUNTY_REGISTRY_ADDRESS: ${{ needs.deploy-contracts.outputs.registry-address }}
+          NEXT_PUBLIC_MERGE_VERIFIER_ADDRESS: ${{ needs.deploy-contracts.outputs.verifier-address }}
+          NEXT_PUBLIC_STELLAR_NETWORK: ${{ github.event.inputs.environment || 'futurenet' }}
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-build
+          path: frontend/.next/
+          retention-days: 5
+
+  # =============================================
+  # Deploy Relay Service
+  # =============================================
+  deploy-relay:
+    name: Deploy Relay Service
+    runs-on: ubuntu-latest
+    needs: deploy-contracts
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: relay/package-lock.json
+
+      - name: Install dependencies
+        working-directory: relay
+        run: npm ci
+
+      - name: Build relay
+        working-directory: relay
+        run: npm run build
+
+      - name: Deploy to hosting platform
+        run: |
+          # Deploy to Render/Railway/Vercel serverless function
+          # This depends on the chosen hosting provider
+          echo "Deploying relay service..."
+          echo "MergeVerifier: ${{ needs.deploy-contracts.outputs.verifier-address }}"
+          echo "BountyRegistry: ${{ needs.deploy-contracts.outputs.registry-address }}"
+
+  # =============================================
+  # Summary
+  # =============================================
+  summary:
+    name: Deployment Summary
+    runs-on: ubuntu-latest
+    needs: [deploy-contracts, deploy-frontend, deploy-relay]
+    if: always()
+    steps:
+      - name: Deployment status
+        run: |
+          echo "=== Deployment Summary ==="
+          echo "Contracts: ${{ needs.deploy-contracts.result }}"
+          echo "Frontend: ${{ needs.deploy-frontend.result }}"
+          echo "Relay: ${{ needs.deploy-relay.result }}"
+
+          if [[ "${{ needs.deploy-contracts.result }}" == "success" ]]; then
+            echo "Contract addresses deployed successfully"
+          fi

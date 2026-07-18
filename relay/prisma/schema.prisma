@@ -1,0 +1,7 @@
+generator client { provider = "prisma-client-js" }
+datasource db { provider = "postgresql"; url = env("DATABASE_URL") }
+
+model User { id String @id @default(cuid()); githubId String @unique; login String @unique; avatarUrl String?; wallets Wallet[]; bounties Bounty[]; createdAt DateTime @default(now()) }
+model Wallet { id String @id @default(cuid()); network String; address String; label String?; userId String; user User @relation(fields:[userId], references:[id], onDelete:Cascade); @@unique([userId, network, address]) }
+model Bounty { id String @id @default(cuid()); githubIssueUrl String @unique; amount Decimal @db.Decimal(30,7); asset String; deadline DateTime; status String @default("DRAFT"); contractBountyId String? @unique; creatorId String; creator User @relation(fields:[creatorId], references:[id]); pullRequestUrl String?; mergeCommitSha String?; refundableAt DateTime?; createdAt DateTime @default(now()); verifications Verification[] }
+model Verification { id String @id @default(cuid()); bountyId String; bounty Bounty @relation(fields:[bountyId], references:[id], onDelete:Cascade); source String; status String; details Json?; createdAt DateTime @default(now()) }
