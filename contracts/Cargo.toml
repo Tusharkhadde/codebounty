@@ -14,3 +14,6 @@ hedgy = "0.1.0-beta.2"
 
 [workspace.metadata]
 soroban = "22.0.6"
+
+[profile.release]
+overflow-checks = true

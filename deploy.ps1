@@ -1,16 +1,16 @@
 # CodeBounty deploy script (TESTNET)
-# Run from the repo root after installing the Stellar CLI:
-#   cargo install --locked soroban-cli   (WSL recommended)  OR
-#   download stellar-cli win32 binary and put stellar.exe on PATH
+# Run from the repo root. Uses the Stellar CLI binary at the repo root (stellar.exe).
 #
 # Prereqs:
-#   - Your Freighter testnet account funded with XLM (you have 10000 XLM).
+#   - Your Freighter testnet account funded with XLM.
 #   - SOROBAN_SOURCE_SECRET set in .env (your Freighter S... secret).
-#     The public address is read from SOROBAN_SOURCE_ACCOUNT in .env.
+#   - stellar.exe present at repo root (CLI v25+).
 #
 # Usage (PowerShell):  .\deploy.ps1
 
 $ErrorActionPreference = "Stop"
+
+$CLI = Join-Path $PSScriptRoot "stellar.exe"
 
 # --- Read network + account config from .env ---
 $envFile = Join-Path $PSScriptRoot ".env"
@@ -23,9 +23,8 @@ $SECRET = Get-EnvValue "SOROBAN_SOURCE_SECRET"
 $RPC    = Get-EnvValue "SOROBAN_RPC_URL"
 $PASS   = Get-EnvValue "SOROBAN_NETWORK_PASSPHRASE"
 
-$KEY_NAME = "codebounty-deployer"
-$WASM_REGISTRY = "contracts\target\wasm32-unknown-unknown\release\codebounty_bounty_registry.wasm"
-$WASM_VERIFIER  = "contracts\target\wasm32-unknown-unknown\release\codebounty_merge_verifier.wasm"
+$WASM_REGISTRY = "contracts\target\wasm32v1-none\release\codebounty_bounty_registry.wasm"
+$WASM_VERIFIER  = "contracts\target\wasm32v1-none\release\codebounty_merge_verifier.wasm"
 $RELAY_PUB_KEY  = "6d38e11651a7bb423eeb49b53f1bf76d4a74155dbddaf5e45a7fc15388e7dee5"
 
 if (-not $SECRET -or $SECRET -eq "PASTE_YOUR_FREIGHTER_S_SECRET") {
@@ -35,55 +34,29 @@ if (-not $SECRET -or $SECRET -eq "PASTE_YOUR_FREIGHTER_S_SECRET") {
 
 Write-Host "Using source account: $SOURCE" -ForegroundColor Cyan
 
-# --- Register the key as a CLI identity (idempotent) ---
-Write-Host "Registering CLI key identity '$KEY_NAME'..." -ForegroundColor Cyan
-stellar keys address $KEY_NAME 2>$null
-if ($LASTEXITCODE -ne 0) {
-  stellar keys add $KEY_NAME --secret $SECRET --network testnet
-  if ($LASTEXITCODE -ne 0) { exit 1 }
-}
-
-Write-Host "Building contracts..." -ForegroundColor Cyan
+Write-Host "Building contracts (wasm32v1-none via stellar contract build)..." -ForegroundColor Cyan
 Push-Location contracts
-cargo build --release --target wasm32-unknown-unknown
+& $CLI contract build
+if ($LASTEXITCODE -ne 0) { Pop-Location; exit 1 }
 Pop-Location
 
 Write-Host "Deploying BountyRegistry..." -ForegroundColor Cyan
-$REGISTRY = stellar contract deploy `
-  --wasm $WASM_REGISTRY `
-  --source $KEY_NAME `
-  --rpc-url $RPC `
-  --network-passphrase $PASS
+$REGISTRY = & $CLI contract deploy --wasm $WASM_REGISTRY --source-account $SECRET --rpc-url $RPC --network-passphrase $PASS 2>&1 | ForEach-Object { if ($_ -match '^[CC][A-Z0-9]{55,}$') { $_ } }
+$REGISTRY = ($REGISTRY | Select-Object -Last 1).Trim()
 Write-Host "BOUNTY_REGISTRY_ADDRESS=$REGISTRY" -ForegroundColor Green
 
 Write-Host "Deploying MergeVerifier..." -ForegroundColor Cyan
-$VERIFIER = stellar contract deploy `
-  --wasm $WASM_VERIFIER `
-  --source $KEY_NAME `
-  --rpc-url $RPC `
-  --network-passphrase $PASS `
-  -- $REGISTRY
+$VERIFIER = & $CLI contract deploy --wasm $WASM_VERIFIER --source-account $SECRET --rpc-url $RPC --network-passphrase $PASS 2>&1 | ForEach-Object { if ($_ -match '^[CC][A-Z0-9]{55,}$') { $_ } }
+$VERIFIER = ($VERIFIER | Select-Object -Last 1).Trim()
 Write-Host "MERGE_VERIFIER_ADDRESS=$VERIFIER" -ForegroundColor Green
 
 Write-Host "Initializing MergeVerifier..." -ForegroundColor Cyan
-stellar contract invoke `
-  --id $VERIFIER `
-  --source $KEY_NAME `
-  --rpc-url $RPC `
-  --network-passphrase $PASS `
-  -- initialize `
-  --admin $SOURCE `
-  --registry_addr $REGISTRY `
-  --relay_pub_key $RELAY_PUB_KEY
+& $CLI contract invoke --id $VERIFIER --source-account $SECRET --rpc-url $RPC --network-passphrase $PASS -- initialize --admin $SOURCE --registry_addr $REGISTRY --relay_pub_key $RELAY_PUB_KEY
+if ($LASTEXITCODE -ne 0) { exit 1 }
 
 Write-Host "Authorizing MergeVerifier in BountyRegistry..." -ForegroundColor Cyan
-stellar contract invoke `
-  --id $REGISTRY `
-  --source $KEY_NAME `
-  --rpc-url $RPC `
-  --network-passphrase $PASS `
-  -- set_authorized_caller `
-  --caller $VERIFIER
+& $CLI contract invoke --id $REGISTRY --source-account $SECRET --rpc-url $RPC --network-passphrase $PASS -- set_authorized_caller --caller $VERIFIER
+if ($LASTEXITCODE -ne 0) { exit 1 }
 
 Write-Host "Done. Paste these into your .env files:" -ForegroundColor Cyan
 Write-Host "BOUNTY_REGISTRY_ADDRESS=$REGISTRY"
