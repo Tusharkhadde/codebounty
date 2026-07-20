@@ -5,7 +5,6 @@ edition = "2021"
 publish = false
 
 [lib]
-do-not-embed = false
 crate-type = ["cdylib"]
 
 [dependencies]
