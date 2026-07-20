@@ -1,0 +1,8 @@
+[target.wasm32-unknown-unknown]
+rustflags = [
+  "-Ctarget-feature=-reference-types",
+  "-Ctarget-feature=-function-references",
+  "-Ctarget-feature=-multivalue",
+  "-Ctarget-feature=-sign-ext",
+  "-Ctarget-feature=-bulk-memory",
+]
