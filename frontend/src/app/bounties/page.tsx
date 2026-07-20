@@ -1,8 +1,12 @@
 'use client'
 
 import { useState } from 'react'
+import { SearchX } from 'lucide-react'
 import { BountyCard } from '@/components/BountyCard'
 import { FilterBar } from '@/components/FilterBar'
+import { EmptyState } from '@/components/EmptyState'
+import { Button } from '@/components/ui/button'
+import Link from 'next/link'
 import { useWallet } from '@/contexts/WalletContext'
 import type { Bounty, BountyStatus } from '@/types'
 
@@ -67,14 +71,20 @@ export default function BountiesPage() {
       )}
 
       {filtered.length === 0 ? (
-        <div className="glass-card text-center py-16 animate-fade-in-up">
-          <div className="text-4xl mb-4">🔍</div>
-          <h3 className="text-lg font-semibold mb-2">No bounties found</h3>
-          <p className="text-gray-400 text-sm">
-            Event indexing is pending a configured registry address. Be the first
-            to create a bounty!
-          </p>
-        </div>
+        <EmptyState
+          icon={<SearchX className="h-7 w-7" />}
+          title={searchQuery ? 'No matching bounties' : 'No bounties yet'}
+          description={
+            searchQuery
+              ? 'Try a different search term or clear the filter to see everything.'
+              : 'Event indexing is pending a configured registry address. Be the first to create a bounty!'
+          }
+          action={
+            <Link href="/login">
+              <Button size="sm">Create a bounty</Button>
+            </Link>
+          }
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {filtered.map(b => (

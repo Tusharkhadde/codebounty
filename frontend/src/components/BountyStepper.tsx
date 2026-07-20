@@ -48,7 +48,7 @@ export function BountyStepper({ currentStep, bountyId }: Props) {
         
         {/* Progress Line Fill with gradient */}
         <div 
-          className="absolute top-5 left-0 h-1 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all duration-700 ease-out"
+          className="absolute top-5 left-0 h-1 bg-gradient-to-r from-[var(--accent)] to-sky-400 rounded-full transition-all duration-700 ease-out"
           style={{ width: `${progressPercent}%` }}
         />
 
@@ -71,14 +71,14 @@ export function BountyStepper({ currentStep, bountyId }: Props) {
                     'w-12 h-12 rounded-full flex items-center justify-center',
                     'text-lg transition-all duration-500 relative',
                     isCompleted
-                      ? 'bg-gradient-to-br from-purple-500 to-pink-500 shadow-lg shadow-purple-500/40 scale-110'
+                      ? 'bg-gradient-to-br from-[var(--accent)] to-sky-400 shadow-lg shadow-[var(--accent-glow)] scale-110'
                       : isCurrent
-                        ? 'bg-gradient-to-br from-purple-500 to-pink-500 shadow-lg shadow-purple-500/50 ring-4 ring-purple-500/30 scale-110'
+                        ? 'bg-gradient-to-br from-[var(--accent)] to-sky-400 shadow-lg shadow-[var(--accent-glow)] ring-4 ring-[var(--accent)]/30 scale-110'
                         : 'bg-white/5 border-2 border-white/10'
                   )}
                 >
                   {isCompleted ? (
-                    <svg className="w-6 h-6 text-white animate-fade-in" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="w-6 h-6 text-[#042f2e] animate-fade-in" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                     </svg>
                   ) : (
@@ -87,7 +87,7 @@ export function BountyStepper({ currentStep, bountyId }: Props) {
                   
                   {/* Pulse effect for current step */}
                   {isCurrent && (
-                    <span className="absolute inset-0 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 animate-ping opacity-40" />
+                    <span className="absolute inset-0 rounded-full bg-gradient-to-br from-[var(--accent)] to-sky-400 animate-ping opacity-40" />
                   )}
                 </div>
 
@@ -116,14 +116,14 @@ export function BountyStepper({ currentStep, bountyId }: Props) {
       <div className="mt-8 pt-5 border-t border-white/10">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <span className={cn(
+             <span className={cn(
               'w-2 h-2 rounded-full',
               currentStep === 'paid'
                 ? 'bg-green-400 shadow-lg shadow-green-400/50'
                 : currentStep === 'verified'
-                  ? 'bg-purple-400'
+                  ? 'bg-[var(--accent)]'
                   : currentStep === 'pr_linked'
-                    ? 'bg-blue-400'
+                    ? 'bg-sky-400'
                     : 'bg-white animate-pulse'
             )} />
             <span className="text-sm text-gray-300">

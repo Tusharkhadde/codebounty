@@ -1,12 +1,4 @@
-src\contexts\WalletContext.tsx (45:27) @ eval
-
-  43 |
-  44 |       const { address } = await getAddress()
-> 45 |       if (!address) throw new Error('Wallet access was not granted.')
-     |                           ^
-  46 |
-  47 |       let network = 'futurenet'
-  48 |       try {'use client'
+'use client'
 
 import type React from "react"
 

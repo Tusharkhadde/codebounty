@@ -83,7 +83,7 @@ export function BountyCard({ bounty, onClick }: Props) {
           href={bounty.issue_url}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-white hover:text-purple-300 transition-colors line-clamp-2 group-hover:text-purple-300"
+          className="text-white hover:text-[var(--accent)] transition-colors line-clamp-2 group-hover:text-[var(--accent)]"
           onClick={(e) => e.stopPropagation()}
         >
           {bounty.issue_url.replace('https://github.com/', '')}

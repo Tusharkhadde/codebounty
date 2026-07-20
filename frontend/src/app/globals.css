@@ -595,3 +595,63 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   filter: contrast(1.2) grayscale(1);
 }
 .landing-grain { background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 180 180' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.9'/%3E%3C/svg%3E"); mix-blend-mode: screen; }
+
+/* Border beam rotary animation (VengenceUI) */
+@keyframes border-beam {
+  0% { offset-distance: 0%; }
+  100% { offset-distance: 100%; }
+}
+.animate-border-beam {
+  animation: border-beam var(--bb-duration, 14s) infinite linear;
+  offset-path: rect(0 100% 100% 0);
+  offset-rotate: 0deg;
+}
+
+/* Spotlight hover (radial light that follows the cursor) */
+.spotlight-card {
+  position: relative;
+  overflow: hidden;
+}
+.spotlight-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  background: radial-gradient(
+    280px circle at var(--spotlight-x, 50%) var(--spotlight-y, 50%),
+    rgba(25, 211, 197, 0.14),
+    transparent 60%
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+.spotlight-card:hover::before {
+  opacity: 1;
+}
+.spotlight-card > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* Continuous marquee for logo/word cloud */
+@keyframes marquee {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.animate-marquee {
+  animation: marquee var(--marquee-duration, 32s) linear infinite;
+}
+.marquee-mask {
+  -webkit-mask-image: linear-gradient(to right, transparent, black 12%, black 88%, transparent);
+  mask-image: linear-gradient(to right, transparent, black 12%, black 88%, transparent);
+}
+
+/* Gradient text used by section eyebrows */
+.eyebrow {
+  @apply text-xs font-semibold tracking-[0.18em] uppercase;
+  color: var(--accent);
+}
+
+/* Tabular figure for amounts */
+.tnum { font-variant-numeric: tabular-nums; }

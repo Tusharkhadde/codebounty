@@ -2,6 +2,7 @@
 
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { BorderBeam } from '@/components/ui/border-beam'
 import { cn } from '@/lib/utils'
 
 interface Props {
@@ -12,7 +13,8 @@ interface Props {
 
 export function ErrorState({ message, onRetry, className }: Props) {
   return (
-    <Card className={cn('p-8 animate-fade-in-up', className)}>
+    <Card className={cn('relative overflow-hidden p-8 animate-fade-in-up', className)}>
+      <BorderBeam colorFrom="#ef4444" colorTo="#f59e0b" duration={11} borderWidth={1} />
       <div className="flex flex-col items-center justify-center text-center gap-3">
         <div className="w-14 h-14 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center animate-pulse">
           <svg className="w-7 h-7 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
