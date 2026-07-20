@@ -22,7 +22,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<WalletState>({
     connected: false,
     address: null,
-    network: 'futurenet',
+    network: 'testnet',
     connecting: false,
     error: null,
   })
@@ -48,10 +48,10 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
       if (!address) throw new Error('Wallet access was not granted.')
 
-      let network = 'futurenet'
+      let network = 'testnet'
       try {
         const netRes = await getNetwork()
-        network = netRes.network || 'futurenet'
+        network = netRes.network || 'testnet'
       } catch {
         // Keep default network if the call is unsupported.
       }
@@ -85,7 +85,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     setState({
       connected: false,
       address: null,
-      network: 'futurenet',
+      network: 'testnet',
       connecting: false,
       error: null,
     })
