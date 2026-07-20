@@ -2,8 +2,13 @@
 
 import Link from 'next/link'
 import { ArrowRight, Bot, CheckCircle2, Github, LockKeyhole, Wallet } from 'lucide-react'
-import { EtherealBeamsHero } from '@/components/ui/ethereal-beams-hero'
+import dynamic from 'next/dynamic'
 import { Spotlight } from '@/components/ui/spotlight'
+
+const EtherealBeamsHero = dynamic(
+  () => import('@/components/ui/ethereal-beams-hero').then((m) => m.EtherealBeamsHero),
+  { ssr: false, loading: () => <div className="min-h-[420px] w-full" aria-hidden="true" /> },
+)
 import { BorderBeam } from '@/components/ui/border-beam'
 import { AnimatedNumber } from '@/components/ui/animated-number'
 
