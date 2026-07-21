@@ -18,7 +18,7 @@ const mockBounties: Bounty[] = [
 ]
 
 export default function Home() {
-  const { connected, connecting, error, handleConnect, disconnect } = useWallet()
+  const { connected, connecting, error, connect, disconnect } = useWallet()
   const pageRef = useRef<HTMLDivElement>(null)
 
   return (
@@ -48,7 +48,7 @@ export default function Home() {
                     style={{ borderRight: 'none', borderTopRightRadius: 0, borderBottomRightRadius: 0 }}
                   />
                   <button 
-                    onClick={handleConnect}
+                    onClick={connect}
                     disabled={connecting}
                     className="btn-primary-slash rounded-l-none"
                     style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}
