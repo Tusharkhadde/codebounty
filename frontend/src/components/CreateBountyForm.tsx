@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, FormEvent } from 'react'
+import { useState, useEffect, FormEvent } from 'react'
 import { useWallet } from '@/contexts/WalletContext'
 import type { CreateBountyFormData } from '@/types'
 import { Button } from '@/components/ui/button'
@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label'
 
 export function CreateBountyForm() {
   const { connected, connecting } = useWallet()
+  const [githubUser, setGithubUser] = useState<string | null>(null)
   const [formData, setFormData] = useState<CreateBountyFormData>({
     issueUrl: '',
     amount: '',
@@ -19,6 +20,17 @@ export function CreateBountyForm() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then(res => res.json())
+      .then(data => {
+        if (data.authenticated && data.user) {
+          setGithubUser(data.user.login)
+        }
+      })
+      .catch(console.error)
+  }, [])
 
   const validateForm = (): boolean => {
     if (!formData.issueUrl.trim()) {
@@ -69,6 +81,11 @@ export function CreateBountyForm() {
       return
     }
 
+    if (!githubUser) {
+      setError('Please sign in with GitHub first')
+      return
+    }
+
     if (!validateForm()) {
       return
     }
@@ -92,18 +109,30 @@ export function CreateBountyForm() {
     setError(null)
   }
 
-  if (!connected) {
+  if (!connected || !githubUser) {
     return (
       <Card className="text-center py-12 px-6 animate-fade-in">
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500/20 to-purple-500/20 flex items-center justify-center mx-auto mb-4 border border-white/10 group-hover:border-purple-500/30 group-hover:scale-110 transition-all duration-300">
-          <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-teal-500/20 to-cyan-500/20 flex items-center justify-center mx-auto mb-4 border border-teal-500/30">
+          <svg className="w-8 h-8 text-teal-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
           </svg>
         </div>
         <h3 className="text-lg font-semibold mb-2">Connect to Create Bounty</h3>
-        <p className="text-gray-400 text-sm max-w-sm mx-auto">
-          You need to connect your Stellar wallet to create and fund bounties on the platform.
+        <p className="text-gray-400 text-sm max-w-sm mx-auto mb-6">
+          You need to sign in with GitHub and connect your Stellar wallet to create bounties.
         </p>
+        <div className="flex flex-col gap-3 max-w-xs mx-auto">
+          {!githubUser && (
+            <a href="/login" className="btn-primary w-full py-2.5 justify-center">
+              Sign In with GitHub
+            </a>
+          )}
+          {!connected && (
+            <button className="btn-secondary w-full py-2.5 justify-center pointer-events-none opacity-50">
+              Wallet Required
+            </button>
+          )}
+        </div>
       </Card>
     )
   }

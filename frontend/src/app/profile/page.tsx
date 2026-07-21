@@ -50,13 +50,32 @@ export default function ProfilePage() {
     const saved = window.localStorage.getItem(storageKey)
     if (saved) setWallets(JSON.parse(saved))
 
+    const fetchSession = async () => {
+      try {
+        const res = await fetch('/api/auth/me')
+        if (res.ok) {
+          const data = await res.json()
+          if (data.authenticated && data.user) {
+            setUserProfile(prev => ({
+              ...prev,
+              username: data.user.login,
+              githubUser: data.user.login,
+              githubLinked: true
+            }))
+          }
+        }
+      } catch (err) {
+        console.error('Failed to fetch session', err)
+      }
+    }
+    fetchSession()
+
     const reg = window.localStorage.getItem('codebounty.user-registration')
     if (reg) {
       try {
         const parsed = JSON.parse(reg)
         setUserProfile(prev => ({
           ...prev,
-          username: parsed.username || prev.username,
           email: parsed.email || prev.email,
           role: parsed.role === 'sponsor' ? 'Sponsor / Project Lead' : 'Hunter / Developer'
         }))

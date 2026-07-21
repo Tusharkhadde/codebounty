@@ -119,100 +119,30 @@ export default function SignupPage() {
                   <h2 className="text-xl font-bold text-white">Sign Up</h2>
                   <p className="text-xs text-slate-400 mt-1">Quick onboarding for Web3 contributors</p>
                 </div>
-                <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-teal-300/20 bg-teal-300/10">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-teal-300/20 bg-teal-300/10 shadow-[0_0_15px_rgba(45,212,191,0.2)]">
                   <ShieldCheck className="h-5 w-5 text-teal-300" />
                 </div>
               </div>
 
               {/* Fast OAuth Buttons */}
-              <div className="mt-6 space-y-3">
+              <div className="mt-8 space-y-6">
                 <a
                   href="/api/auth/github"
-                  className="btn-primary w-full py-2.5 text-xs justify-center font-medium shadow-md"
+                  className="btn-primary w-full py-3.5 text-sm justify-center font-semibold shadow-[0_0_20px_rgba(20,184,166,0.3)] hover:shadow-[0_0_30px_rgba(20,184,166,0.5)] transition-all duration-300 group"
                 >
-                  <Github className="h-4 w-4" /> Quick Sign Up with GitHub
+                  <Github className="h-5 w-5 mr-1 group-hover:scale-110 transition-transform" /> Quick Sign Up with GitHub
                 </a>
 
-                <div className="relative flex items-center justify-center my-4">
-                  <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-white/10" /></div>
-                  <span className="relative bg-surface-raised px-3 text-[10px] uppercase font-semibold text-slate-400">or complete profile details</span>
-                </div>
-              </div>
-
-              <form onSubmit={handleSubmit} className="space-y-4 text-xs">
-                <div>
-                  <label className="input-label text-xs">GitHub / Handle Username</label>
-                  <div className="relative">
-                    <User className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" />
-                    <input
-                      type="text"
-                      required
-                      placeholder="e.g. dev_hunter"
-                      value={formData.username}
-                      onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                      className="input-field text-xs pl-10"
-                    />
+                <div className="rounded-xl border border-teal-500/20 bg-teal-500/5 p-4 mt-6">
+                  <div className="flex items-start gap-3">
+                    <CheckCircle2 className="h-4 w-4 shrink-0 text-teal-400 mt-0.5" />
+                    <p className="text-xs text-slate-300 leading-relaxed">
+                      Your CodeBounty profile will be automatically created using your GitHub username. You can connect your Stellar wallet from your dashboard later.
+                    </p>
                   </div>
                 </div>
 
-                <div>
-                  <label className="input-label text-xs">Email Address</label>
-                  <div className="relative">
-                    <Mail className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" />
-                    <input
-                      type="email"
-                      required
-                      placeholder="developer@stellar.org"
-                      value={formData.email}
-                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                      className="input-field text-xs pl-10"
-                    />
-                  </div>
-                </div>
-
-                {role === 'sponsor' && (
-                  <div>
-                    <label className="input-label text-xs">Organization / Project Name</label>
-                    <div className="relative">
-                      <Building className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-400" />
-                      <input
-                        type="text"
-                        placeholder="e.g. Stellar Foundation / OpenLab"
-                        value={formData.organization}
-                        onChange={(e) => setFormData({ ...formData, organization: e.target.value })}
-                        className="input-field text-xs pl-10"
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {/* Freighter Connection Shortcut */}
-                <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3 space-y-2">
-                  <div className="flex items-center justify-between text-slate-300 font-medium">
-                    <span>Web3 Wallet Connection</span>
-                    {connected ? (
-                      <span className="text-[10px] text-teal-300 font-mono flex items-center gap-1">
-                        <CheckCircle2 className="h-3 w-3" /> Connected
-                      </span>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={connect}
-                        disabled={connecting}
-                        className="text-[11px] text-teal-300 hover:underline flex items-center gap-1"
-                      >
-                        <Wallet className="h-3 w-3" /> {connecting ? 'Connecting...' : 'Connect Freighter'}
-                      </button>
-                    )}
-                  </div>
-                  {connected && (
-                    <code className="block break-all text-[10px] text-slate-400 font-mono bg-black/30 p-1.5 rounded">
-                      {address}
-                    </code>
-                  )}
-                </div>
-
-                <div className="flex items-start gap-2 pt-1">
+                <div className="flex items-start gap-2 pt-2">
                   <input
                     type="checkbox"
                     id="terms"
@@ -225,15 +155,7 @@ export default function SignupPage() {
                     I agree to the <span className="text-teal-300 underline cursor-pointer">CodeBounty Terms</span> and acknowledge smart contract escrow rules.
                   </label>
                 </div>
-
-                <button
-                  type="submit"
-                  disabled={!formData.agreedToTerms}
-                  className="btn-primary w-full py-3 text-sm justify-center font-medium mt-2 shadow-lg shadow-teal-500/20"
-                >
-                  Create Account
-                </button>
-              </form>
+              </div>
             </div>
           )}
 
