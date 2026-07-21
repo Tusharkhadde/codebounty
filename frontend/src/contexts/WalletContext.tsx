@@ -52,6 +52,13 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     mountedRef.current = true
     const checkInstallation = async () => {
+      const hasWindowFreighter = typeof window !== 'undefined' && (
+        'freighter' in window || 'stellar' in window || (window as unknown as { isFreighter?: boolean }).isFreighter
+      )
+      if (hasWindowFreighter) {
+        if (mountedRef.current) setFreighterInstalled(true)
+        return
+      }
       try {
         const result = await isConnected()
         if (mountedRef.current) {
@@ -104,7 +111,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     if (connectingLockRef.current) {
       safeSetState(prev => ({
         ...prev,
-        error: 'Connection request in progress. Please check your browser extensions.',
+        error: 'Please wait — previous connection request is still in progress.',
       }))
       return
     }

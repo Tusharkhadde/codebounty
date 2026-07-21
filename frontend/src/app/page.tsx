@@ -9,6 +9,7 @@ import { StatsCard } from '@/components/StatsCard'
 import { FilterBar } from '@/components/FilterBar'
 import { LoadingState } from '@/components/LoadingState'
 import { ErrorState } from '@/components/ErrorState'
+import { InstallFreighter } from '@/components/InstallFreighter'
 import type { Bounty, BountyStatus } from '@/types'
 
 // Mock data for display
@@ -18,7 +19,7 @@ const mockBounties: Bounty[] = [
 ]
 
 export default function Home() {
-  const { connected, connecting, error, connect, disconnect } = useWallet()
+  const { connected, connecting, error, connect, disconnect, freighterInstalled } = useWallet()
   const pageRef = useRef<HTMLDivElement>(null)
 
   return (
@@ -38,9 +39,11 @@ export default function Home() {
             </p>
             
             {/* CTA */}
-            <div className="flex items-stretch">
-              {!connected ? (
-                <>
+            {!connected ? (
+              !freighterInstalled ? (
+                <InstallFreighter />
+              ) : (
+                <div className="flex items-stretch">
                   <input 
                     type="email" 
                     placeholder="Enter email for updates" 
@@ -55,18 +58,18 @@ export default function Home() {
                   >
                     {connecting ? 'Connecting...' : 'Get Started'}
                   </button>
-                </>
-              ) : (
-                <div className="flex items-center gap-4">
-                  <div className="pill-tag text-[#10b981] border-[#10b981]/30 bg-[#10b981]/10">
-                    Wallet Connected
-                  </div>
-                  <button onClick={disconnect} className="btn-ghost-slash">
-                    Disconnect
-                  </button>
                 </div>
-              )}
-            </div>
+              )
+            ) : (
+              <div className="flex items-center gap-4">
+                <div className="pill-tag text-[#10b981] border-[#10b981]/30 bg-[#10b981]/10">
+                  Wallet Connected
+                </div>
+                <button onClick={disconnect} className="btn-ghost-slash">
+                  Disconnect
+                </button>
+              </div>
+            )}
 
             {error && (
               <div className="mt-6 text-sm text-[#ef4444]">
