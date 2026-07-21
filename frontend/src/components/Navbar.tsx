@@ -45,17 +45,23 @@ export function Navbar() {
             <Link href="/profile" className="text-gray-400 hover:text-white px-3 py-2 rounded-lg text-sm font-medium transition-all duration-300 hover:bg-white/5">
               Profile
             </Link>
+            <Link href="/login" className="text-teal-300 hover:text-teal-100 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-300 hover:bg-teal-400/10">
+              Sign In
+            </Link>
+            <Link href="/signup" className="text-xs font-semibold px-3 py-1.5 rounded-full bg-teal-400/20 text-teal-300 border border-teal-300/30 hover:bg-teal-400/30 transition-all ml-1">
+              Sign Up
+            </Link>
           </div>
 
           {/* Wallet Connection & Mobile Menu Button */}
           <div className="flex items-center gap-3">
-            {/* Error Display */}
+            {/* Error Display — desktop */}
             {error && (
-              <div className="hidden xs:flex items-center gap-2 px-3 py-1.5 bg-white/10 border border-white/20 rounded-lg">
-                <svg className="w-4 h-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-red-500/10 border border-red-500/30 rounded-lg max-w-[220px]">
+                <svg className="w-4 h-4 text-red-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
-                <span className="text-gray-300 text-xs">{error}</span>
+                <span className="text-red-300 text-xs truncate">{error}</span>
               </div>
             )}
 
@@ -153,6 +159,16 @@ export function Navbar() {
                 Profile
               </Link>
               
+              {/* Mobile Error */}
+              {error && (
+                <div className="flex items-center gap-2 px-3 py-2.5 bg-red-500/10 border border-red-500/30 rounded-lg">
+                  <svg className="w-4 h-4 text-red-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="text-red-300 text-sm leading-tight">{error}</span>
+                </div>
+              )}
+
               {/* Mobile Wallet Info */}
               {connected && (
                 <div className="flex items-center gap-2 px-3 py-2.5 mt-2 bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-green-500/20 rounded-lg">
