@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import { WalletProvider } from '@/contexts/WalletContext'
-import { Navbar } from '@/components/Navbar'
+import { Sidebar } from '@/components/Sidebar'
 
 export const metadata: Metadata = {
   title: 'CodeBounty - GitHub Bug Bounty Escrow on Stellar',
@@ -24,19 +24,22 @@ export default function RootLayout({
     <html lang="en" className="scroll-smooth">
       <body className="min-h-screen">
         <WalletProvider>
-          <div className="relative min-h-screen">
+          <div className="relative min-h-screen flex">
             {/* Background Effects from globals.css */}
             
-            {/* Fixed Navbar */}
-            <Navbar />
+            {/* Sidebar */}
+            <Sidebar />
             
-            {/* Main Content */}
-            <main className="relative z-10 container-main py-8">
-              {children}
-            </main>
-            
-            {/* Footer */}
-            <Footer />
+            {/* Main Content Area */}
+            <div className="flex-1 flex flex-col min-w-0 min-h-screen">
+              {/* Main Content */}
+              <main className="relative z-10 flex-1 container-main py-8">
+                {children}
+              </main>
+              
+              {/* Footer */}
+              <Footer />
+            </div>
           </div>
         </WalletProvider>
       </body>

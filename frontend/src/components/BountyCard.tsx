@@ -2,7 +2,7 @@
 
 import type { Bounty } from '@/types'
 import { formatDate, formatXLM } from '@/utils/formatters'
-import { Card } from '@/components/ui/card'
+import { GlowBorderCard } from '@/components/ui/glow-border-card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -47,10 +47,14 @@ export function BountyCard({ bounty, onClick }: Props) {
   const isExpired = bounty.deadline && Date.now() / 1000 > bounty.deadline
 
   return (
-    <Card
-      className="flex flex-col h-full cursor-pointer group hover-lift"
+    <GlowBorderCard
+      className="flex flex-col h-full cursor-pointer group hover:scale-[1.02] transition-transform duration-300"
+      colorPreset="stellar"
       onClick={() => onClick?.(bounty)}
+      borderRadius="1.125rem"
+      inset="-0.5rem"
     >
+      <div className="flex flex-col h-full w-full">
       {/* Header with status */}
       <div className="flex items-start justify-between mb-4">
         <Badge variant={getStatusVariant(bounty.status)}>
@@ -167,6 +171,7 @@ export function BountyCard({ bounty, onClick }: Props) {
           </a>
         </Button>
       </div>
-    </Card>
+      </div>
+    </GlowBorderCard>
   )
 }

@@ -195,7 +195,7 @@ function LoginContent() {
                         rel="noopener noreferrer"
                         className="text-[11px] text-slate-400 hover:text-teal-300 underline"
                       >
-                        Don't have Freighter? Get Extension
+                        Don&apos;t have Freighter? Get Extension
                       </a>
                       <button
                         type="button"
