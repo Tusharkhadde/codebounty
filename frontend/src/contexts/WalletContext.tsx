@@ -157,7 +157,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         const errStr = extractFreighterError(reqResult)
         if (errStr) throw new Error(errStr)
         rawAddress = typeof reqResult === 'string' ? reqResult : reqResult?.address
-      } else if (!connectionStatus.isConnected && connectionStatus !== true) {
+      } else if (!connectionStatus.isConnected && (connectionStatus as any) !== true) {
         const res = await Promise.race([
           requestAccess(),
           timeout,
