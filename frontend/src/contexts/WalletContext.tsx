@@ -142,7 +142,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       }
 
       let rawAddress: string | undefined
-      let freighterRes: FreighterResponse | undefined
+      let freighterRes: any | undefined
 
       if (!connectionStatus.isConnected && !hasWindowFreighter) {
         // Check window objects once more
@@ -151,32 +151,32 @@ export function WalletProvider({ children }: { children: ReactNode }) {
             throw new Error(err?.message || 'Freighter extension is not installed or unaccessible.')
           }),
           timeout
-        ]) as FreighterResponse
+        ])
 
         freighterRes = reqResult
         const errStr = extractFreighterError(reqResult)
         if (errStr) throw new Error(errStr)
-        rawAddress = reqResult.address
-      } else if (!connectionStatus.isConnected) {
+        rawAddress = typeof reqResult === 'string' ? reqResult : reqResult?.address
+      } else if (!connectionStatus.isConnected && connectionStatus !== true) {
         const res = await Promise.race([
           requestAccess(),
           timeout,
-        ]) as FreighterResponse
+        ])
 
         freighterRes = res
         const freighterErr = extractFreighterError(res)
         if (freighterErr) throw new Error(freighterErr)
-        rawAddress = res.address
+        rawAddress = typeof res === 'string' ? res : res?.address
       } else {
         const res = await Promise.race([
           getAddress(),
           timeout,
-        ]) as FreighterResponse
+        ])
 
         freighterRes = res
         const freighterErr = extractFreighterError(res)
         if (freighterErr) throw new Error(freighterErr)
-        rawAddress = res.address
+        rawAddress = typeof res === 'string' ? res : res?.address
       }
 
       if (!rawAddress) throw new Error('Wallet access was not granted or Freighter popup was closed.')
