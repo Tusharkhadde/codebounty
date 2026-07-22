@@ -193,8 +193,8 @@ export default function ProfilePage() {
             <span className="text-xs font-semibold uppercase tracking-wider">Total Earned</span>
             <DollarSign className="h-4 w-4 text-teal-400" />
           </div>
-          <p className="text-2xl font-bold text-white font-mono">$1,250.00</p>
-          <p className="text-[11px] text-teal-400 font-medium">↑ 3 Bounties Claimed</p>
+          <p className="text-2xl font-bold text-white font-mono">$0.00</p>
+          <p className="text-[11px] text-teal-400 font-medium">0 Bounties Claimed</p>
         </div>
 
         <div className="glass-card p-5 space-y-1">
@@ -202,8 +202,8 @@ export default function ProfilePage() {
             <span className="text-xs font-semibold uppercase tracking-wider">Bounties Funded</span>
             <Award className="h-4 w-4 text-cyan-400" />
           </div>
-          <p className="text-2xl font-bold text-white font-mono">2 Issues</p>
-          <p className="text-[11px] text-slate-400 font-medium">$500 Escrowed</p>
+          <p className="text-2xl font-bold text-white font-mono">0 Issues</p>
+          <p className="text-[11px] text-slate-400 font-medium">$0 Escrowed</p>
         </div>
 
         <div className="glass-card p-5 space-y-1">
@@ -220,8 +220,8 @@ export default function ProfilePage() {
             <span className="text-xs font-semibold uppercase tracking-wider">Trust Rating</span>
             <Sparkles className="h-4 w-4 text-amber-400" />
           </div>
-          <p className="text-2xl font-bold text-white font-mono">99.8%</p>
-          <p className="text-[11px] text-emerald-400 font-medium">Top Contributor</p>
+          <p className="text-2xl font-bold text-white font-mono">N/A</p>
+          <p className="text-[11px] text-slate-400 font-medium">No rating yet</p>
         </div>
       </section>
 
@@ -363,30 +363,10 @@ export default function ProfilePage() {
           </h2>
 
           <div className="space-y-3 text-xs">
-            <div className="flex items-center justify-between p-3.5 rounded-xl border border-white/10 bg-white/[0.02]">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-teal-400/10 text-teal-300">
-                  <CheckCircle2 className="h-4 w-4" />
-                </div>
-                <div>
-                  <p className="font-semibold text-white">Bounty Claimed: Fix Stellar SDK Memory Leak</p>
-                  <p className="text-[11px] text-slate-400">PR #42 merged • Paid 500 XLM via Soroban Escrow</p>
-                </div>
-              </div>
-              <span className="text-slate-400 text-[11px]">2 hours ago</span>
-            </div>
-
-            <div className="flex items-center justify-between p-3.5 rounded-xl border border-white/10 bg-white/[0.02]">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-cyan-400/10 text-cyan-300">
-                  <Code2 className="h-4 w-4" />
-                </div>
-                <div>
-                  <p className="font-semibold text-white">Pull Request Linked to Issue #108</p>
-                  <p className="text-[11px] text-slate-400">Awaiting maintainer verification</p>
-                </div>
-              </div>
-              <span className="text-slate-400 text-[11px]">Yesterday</span>
+            <div className="rounded-xl border border-dashed border-white/15 p-8 text-center text-xs text-slate-400 space-y-2">
+              <Clock className="h-8 w-8 mx-auto text-slate-500" />
+              <p className="font-medium text-slate-300">No activity history yet</p>
+              <p className="text-[11px]">When you fund or claim a bounty, it will appear here.</p>
             </div>
           </div>
         </section>

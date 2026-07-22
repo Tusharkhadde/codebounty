@@ -10,14 +10,6 @@ import { FilterBar } from '@/components/FilterBar'
 import { LoadingState } from '@/components/LoadingState'
 import { ErrorState } from '@/components/ErrorState'
 import { InstallFreighter } from '@/components/InstallFreighter'
-import type { Bounty, BountyStatus } from '@/types'
-
-// Mock data for display
-const mockBounties: Bounty[] = [
-  { id: 1, issue_url: 'https://github.com/stellar/soroban/issues/1', amount: 5000, creator: 'user1', status: 'created', token: 'XLM', deadline: 0, linked_pr_url: null, contributor: null, funded_at: 0, paid_at: 0 },
-  { id: 2, issue_url: 'https://github.com/stellar/soroban/issues/2', amount: 15000, creator: 'user2', status: 'funded', token: 'XLM', deadline: 0, linked_pr_url: null, contributor: null, funded_at: 0, paid_at: 0 }
-]
-
 export default function Home() {
   const { connected, connecting, error, connect, disconnect, freighterInstalled } = useWallet()
   const pageRef = useRef<HTMLDivElement>(null)
@@ -83,7 +75,7 @@ export default function Home() {
             <div className="flex justify-between items-start mb-12">
               <div>
                 <div className="text-[14px] text-[#9194a1] mb-2 font-medium tracking-wide uppercase">Total Volume</div>
-                <div className="text-[48px] text-white font-medium leading-none tabular-nums">24,500 <span className="text-[24px] text-[#9194a1]">XLM</span></div>
+                <div className="text-[48px] text-white font-medium leading-none tabular-nums">0 <span className="text-[24px] text-[#9194a1]">XLM</span></div>
               </div>
               <div className="pill-tag">
                 Last 30 Days
