@@ -5,7 +5,7 @@ import { useWallet } from '@/contexts/WalletContext'
 import { Button } from '@/components/ui/button'
 
 export function Sidebar() {
-  const { connected, connecting, error, disconnect, address } = useWallet()
+  const { connected, connecting, error, disconnect, address, clearError } = useWallet()
 
   const formatAddress = (addr: string | null): string => {
     if (!addr) return ''
@@ -48,11 +48,16 @@ export function Sidebar() {
       {/* Footer / Wallet Connection */}
       <div className="p-4 border-t border-white/10 shrink-0">
         {error && (
-          <div className="flex items-center gap-2 px-3 py-1.5 bg-red-500/10 border border-red-500/30 rounded-lg mb-3">
-            <svg className="w-4 h-4 text-red-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="flex items-start gap-2 px-3 py-2 bg-red-500/10 border border-red-500/30 rounded-lg mb-3 relative">
+            <svg className="w-4 h-4 text-red-400 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <span className="text-red-300 text-xs break-words w-full">{error}</span>
+            <span className="text-red-300 text-[11px] leading-tight break-words pr-4">{error}</span>
+            <button onClick={clearError} className="absolute right-2 top-2 text-red-400 hover:text-red-300 p-0.5 rounded-md hover:bg-red-500/20 transition-colors">
+              <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
         )}
 
