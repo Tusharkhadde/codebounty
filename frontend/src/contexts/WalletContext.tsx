@@ -7,6 +7,7 @@ import {
   requestAccess,
   getAddress,
   getNetwork,
+  setAllowed,
 } from '@stellar/freighter-api'
 
 const CONNECT_TIMEOUT_MS = 15_000
@@ -147,26 +148,32 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       if (!connectionStatus.isConnected && !hasWindowFreighter) {
         // Check window objects once more
         const reqResult = await Promise.race([
-          requestAccess().catch((err) => {
+          setAllowed().catch((err) => {
             throw new Error(err?.message || 'Freighter extension is not installed or unaccessible.')
           }),
           timeout
         ])
 
-        freighterRes = reqResult
-        const errStr = extractFreighterError(reqResult)
-        if (errStr) throw new Error(errStr)
-        rawAddress = typeof reqResult === 'string' ? reqResult : reqResult?.address
+        if ((reqResult as any)?.error) {
+           const errStr = extractFreighterError(reqResult as any)
+           if (errStr) throw new Error(errStr)
+        }
+        
+        const addrRes = await getAddress()
+        rawAddress = typeof addrRes === 'string' ? addrRes : addrRes?.address
       } else if (!connectionStatus.isConnected && (connectionStatus as any) !== true) {
         const res = await Promise.race([
-          requestAccess(),
+          setAllowed(),
           timeout,
         ])
 
-        freighterRes = res
-        const freighterErr = extractFreighterError(res)
-        if (freighterErr) throw new Error(freighterErr)
-        rawAddress = typeof res === 'string' ? res : res?.address
+        if ((res as any)?.error) {
+           const errStr = extractFreighterError(res as any)
+           if (errStr) throw new Error(errStr)
+        }
+        
+        const addrRes = await getAddress()
+        rawAddress = typeof addrRes === 'string' ? addrRes : addrRes?.address
       } else {
         const res = await Promise.race([
           getAddress(),
@@ -174,7 +181,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         ])
 
         freighterRes = res
-        const freighterErr = extractFreighterError(res)
+        const freighterErr = extractFreighterError(res as any)
         if (freighterErr) throw new Error(freighterErr)
         rawAddress = typeof res === 'string' ? res : res?.address
       }
