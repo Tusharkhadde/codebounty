@@ -147,47 +147,69 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       }
 
       let rawAddress: string | undefined
-      let freighterRes: any | undefined
 
-      if (!connectionStatus.isConnected && !hasWindowFreighter) {
-        // Check window objects once more
-        const reqResult = await Promise.race([
-          setAllowed().catch((err) => {
-            throw new Error(err?.message || 'Freighter extension is not installed or unaccessible.')
-          }),
+      // Attempt to request access / permission first so Freighter prompts the user
+      try {
+        let reqResult: any
+        if (typeof requestAccess === 'function') {
+          reqResult = await Promise.race([
+            requestAccess().catch(err => { throw err }),
+            timeout
+          ])
+        } else {
+          reqResult = await Promise.race([
+            setAllowed().catch(err => { throw err }),
+            timeout
+          ])
+        }
+
+        if (reqResult?.error) {
+          const errStr = extractFreighterError(reqResult)
+          if (errStr) throw new Error(errStr)
+        }
+
+        rawAddress = typeof reqResult === 'string' ? reqResult : reqResult?.address
+      } catch (accessErr: any) {
+        const accessMsg = accessErr?.message || ''
+        const errStr = extractFreighterError(accessErr)
+        if (errStr) throw new Error(errStr)
+
+        // If requestAccess failed, fallback to setAllowed or getAddress
+        try {
+          const res = await Promise.race([
+            setAllowed().catch(() => null),
+            timeout,
+          ])
+          if (res) {
+            const freighterErr = extractFreighterError(res as any)
+            if (freighterErr) throw new Error(freighterErr)
+          }
+        } catch (setErr) {
+          const e = extractFreighterError(setErr as any)
+          if (e) throw new Error(e)
+        }
+
+        const addrRes = await Promise.race([
+          getAddress().catch(() => null),
           timeout
         ])
-
-        if ((reqResult as any)?.error) {
-           const errStr = extractFreighterError(reqResult as any)
-           if (errStr) throw new Error(errStr)
+        if (addrRes) {
+          if (typeof addrRes === 'string') rawAddress = addrRes
+          else if (addrRes.address) rawAddress = addrRes.address
+          else if (addrRes.error) {
+            const e = extractFreighterError(addrRes)
+            if (e) throw new Error(e)
+          }
         }
-        
-        const addrRes = await getAddress()
-        rawAddress = typeof addrRes === 'string' ? addrRes : addrRes?.address
-      } else if (!connectionStatus.isConnected && (connectionStatus as any) !== true) {
-        const res = await Promise.race([
-          setAllowed(),
-          timeout,
-        ])
 
-        if ((res as any)?.error) {
-           const errStr = extractFreighterError(res as any)
-           if (errStr) throw new Error(errStr)
+        if (!rawAddress && accessMsg) {
+          throw accessErr
         }
-        
-        const addrRes = await getAddress()
-        rawAddress = typeof addrRes === 'string' ? addrRes : addrRes?.address
-      } else {
-        const res = await Promise.race([
-          getAddress(),
-          timeout,
-        ])
+      }
 
-        freighterRes = res
-        const freighterErr = extractFreighterError(res as any)
-        if (freighterErr) throw new Error(freighterErr)
-        rawAddress = typeof res === 'string' ? res : res?.address
+      if (!rawAddress) {
+        const addrRes = await getAddress().catch(() => null)
+        rawAddress = typeof addrRes === 'string' ? addrRes : addrRes?.address
       }
 
       if (!rawAddress) throw new Error('Wallet access was not granted or Freighter popup was closed.')
