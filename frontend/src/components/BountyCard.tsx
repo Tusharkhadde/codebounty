@@ -7,14 +7,26 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+
 interface Props {
   bounty: Bounty
   onClick?: (bounty: Bounty) => void
 }
 
 export function BountyCard({ bounty, onClick }: Props) {
+  const router = useRouter()
   const formatAmount = (amount: number): string => {
     return formatXLM(amount)
+  }
+
+  const handleCardClick = () => {
+    if (onClick) {
+      onClick(bounty)
+    } else {
+      router.push(`/bounties/${bounty.id}`)
+    }
   }
 
   const getStatusLabel = (status: string): string => {
@@ -50,7 +62,7 @@ export function BountyCard({ bounty, onClick }: Props) {
     <GlowBorderCard
       className="flex flex-col h-full cursor-pointer group hover:scale-[1.02] transition-transform duration-300"
       colorPreset="stellar"
-      onClick={() => onClick?.(bounty)}
+      onClick={handleCardClick}
       borderRadius="1.125rem"
       inset="-0.5rem"
     >

@@ -1,24 +1,35 @@
 'use client'
 
-import { useState } from 'react'
-import { SearchX } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { SearchX, Plus, Sparkles } from 'lucide-react'
 import { BountyCard } from '@/components/BountyCard'
 import { FilterBar } from '@/components/FilterBar'
 import { EmptyState } from '@/components/EmptyState'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
-import { useWallet } from '@/contexts/WalletContext'
 import type { Bounty, BountyStatus } from '@/types'
 
 export default function BountiesPage() {
-  const { connected } = useWallet()
-  const [bounties] = useState<Bounty[]>([])
+  const [bounties, setBounties] = useState<Bounty[]>([])
+  const [loading, setLoading] = useState(true)
   const [selectedStatus, setSelectedStatus] =
     useState<BountyStatus | 'all'>('all')
   const [searchQuery, setSearchQuery] = useState('')
   const [sortBy, setSortBy] = useState<'amount' | 'deadline' | 'status'>(
     'deadline'
   )
+
+  useEffect(() => {
+    fetch('/api/bounties')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && Array.isArray(data.bounties)) {
+          setBounties(data.bounties)
+        }
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false))
+  }, [])
 
   const filtered = bounties
     .filter(b => selectedStatus === 'all' || b.status === selectedStatus)
@@ -47,41 +58,57 @@ export default function BountiesPage() {
 
   return (
     <div className="container-main py-10 space-y-8">
-      <header>
-        <h1 className="heading-lg mb-2">Bounties</h1>
-        <p className="text-gray-400 max-w-2xl">
-          Browse trustless bounties funded on Stellar. Each bounty locks funds in
-          a Soroban escrow and releases them when the linked pull request merges.
-        </p>
+      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <h1 className="heading-lg">Bounties</h1>
+            <span className="px-2.5 py-0.5 rounded-full bg-teal-500/10 border border-teal-500/20 text-teal-300 text-xs font-semibold flex items-center gap-1">
+              <Sparkles className="w-3 h-3" /> Soroban Escrows
+            </span>
+          </div>
+          <p className="text-gray-400 max-w-2xl text-xs md:text-sm">
+            Browse trustless bounties funded on Stellar. Each bounty locks funds in
+            a Soroban escrow and releases them when the linked pull request merges.
+          </p>
+        </div>
+
+        <Link href="/bounties/create">
+          <Button className="py-2.5 px-5 text-xs font-bold shrink-0 shadow-lg shadow-teal-500/20">
+            <Plus className="w-4 h-4 mr-1.5" /> Create New Bounty
+          </Button>
+        </Link>
       </header>
 
-      {connected && (
-        <FilterBar
-          statuses={statuses}
-          statusCounts={statusCounts}
-          selectedStatus={selectedStatus}
-          onSelectStatus={setSelectedStatus}
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          sortBy={sortBy}
-          onSortChange={setSortBy}
-          totalCount={bounties.length}
-          filteredCount={filtered.length}
-        />
-      )}
+      <FilterBar
+        statuses={statuses}
+        statusCounts={statusCounts}
+        selectedStatus={selectedStatus}
+        onSelectStatus={setSelectedStatus}
+        searchQuery={searchQuery}
+        onSearchChange={setSearchQuery}
+        sortBy={sortBy}
+        onSortChange={setSortBy}
+        totalCount={bounties.length}
+        filteredCount={filtered.length}
+      />
 
-      {filtered.length === 0 ? (
+      {loading ? (
+        <div className="py-16 text-center text-xs text-slate-400">
+          <div className="w-8 h-8 border-2 border-teal-400 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          Loading active bounties...
+        </div>
+      ) : filtered.length === 0 ? (
         <EmptyState
           icon={<SearchX className="h-7 w-7" />}
-          title={searchQuery ? 'No matching bounties' : 'No bounties yet'}
+          title={searchQuery ? 'No matching bounties' : 'No bounties found'}
           description={
             searchQuery
               ? 'Try a different search term or clear the filter to see everything.'
-              : 'Event indexing is pending a configured registry address. Be the first to create a bounty!'
+              : 'Be the first developer to fund a GitHub issue bounty on Soroban!'
           }
           action={
-            <Link href="/login">
-              <Button size="sm">Create a bounty</Button>
+            <Link href="/bounties/create">
+              <Button size="sm" className="text-xs">Create a bounty</Button>
             </Link>
           }
         />

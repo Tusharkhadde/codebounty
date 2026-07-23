@@ -31,11 +31,14 @@ export function Sidebar() {
 
       {/* Nav Links */}
       <div className="flex-1 overflow-y-auto py-6 px-4 flex flex-col gap-2">
-        <Link href="/" className="nav-link-active w-full block">
+        <Link href="/" className="text-gray-400 hover:text-white px-3 py-2 rounded-lg text-sm font-medium transition-all duration-300 hover:bg-white/5 block w-full">
           Dashboard
         </Link>
         <Link href="/bounties" className="text-gray-400 hover:text-white px-3 py-2 rounded-lg text-sm font-medium transition-all duration-300 hover:bg-white/5 block w-full">
           Bounties
+        </Link>
+        <Link href="/bounties/create" className="text-teal-300 hover:text-white px-3 py-2 rounded-lg text-sm font-medium transition-all duration-300 hover:bg-teal-500/10 border border-teal-500/20 block w-full">
+          + Create Bounty
         </Link>
         <Link href="/about" className="text-gray-400 hover:text-white px-3 py-2 rounded-lg text-sm font-medium transition-all duration-300 hover:bg-white/5 block w-full">
           About

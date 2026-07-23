@@ -4,6 +4,7 @@ frontend/.next/
 frontend/node_modules/
 relay/node_modules/
 dist/
+*.exe
 
 # Environment files
 .env

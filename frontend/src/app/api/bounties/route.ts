@@ -12,7 +12,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { issueUrl, title, repository, amount, token, deadline, creator, txHash } = body
+    const { issueUrl, amount, token, deadline, creator } = body
 
     if (!issueUrl || !amount || !creator) {
       return NextResponse.json(
@@ -29,22 +29,9 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    let parsedRepo = repository
-    let issueNum = undefined
-    if (issueUrl) {
-      const m = issueUrl.match(/github\.com\/([^\/]+\/[^\/]+)\/issues\/(\d+)/)
-      if (m) {
-        parsedRepo = m[1]
-        issueNum = parseInt(m[2], 10)
-      }
-    }
-
     const newBounty: Bounty = {
       id: Math.floor(100 + Math.random() * 9000),
       issue_url: issueUrl,
-      title: title || `GitHub Issue #${issueNum || 'Bounty'}`,
-      repository: parsedRepo || 'github/repo',
-      issue_number: issueNum,
       creator: creator,
       amount: numAmount,
       token: token || 'XLM',
@@ -54,7 +41,6 @@ export async function POST(request: NextRequest) {
       contributor: null,
       funded_at: Math.floor(Date.now() / 1000),
       paid_at: 0,
-      tx_hash: txHash || `0x${Math.random().toString(16).substring(2)}${Math.random().toString(16).substring(2)}`,
     }
 
     BOUNTIES_STORE.unshift(newBounty)

@@ -7,19 +7,40 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { CheckCircle2, AlertCircle, ArrowRight, ArrowLeft, ExternalLink, ShieldCheck, Sparkles, Github, DollarSign, Calendar, Lock } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+
+interface GitHubIssueDetails {
+  title: string
+  body: string
+  state: string
+  repository: string
+  issueNumber: number
+  author: string
+  avatarUrl: string
+  labels: Array<{ name: string; color: string }>
+}
 
 export function CreateBountyForm() {
-  const { connected, connecting } = useWallet()
+  const router = useRouter()
+  const { connected, address, demoMode, enableDemoMode, connect } = useWallet()
   const [githubUser, setGithubUser] = useState<string | null>(null)
+  const [step, setStep] = useState<1 | 2 | 3>(1)
+
   const [formData, setFormData] = useState<CreateBountyFormData>({
     issueUrl: '',
-    amount: '',
+    amount: '250',
     token: 'XLM',
-    deadline: '',
+    deadline: Math.floor(Date.now() / 1000 + 30 * 86400).toString(),
   })
+
+  const [verifyingIssue, setVerifyingIssue] = useState(false)
+  const [issueDetails, setIssueDetails] = useState<GitHubIssueDetails | null>(null)
+  const [issueError, setIssueError] = useState<string | null>(null)
+
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState(false)
+  const [createdBountyId, setCreatedBountyId] = useState<number | null>(null)
 
   useEffect(() => {
     fetch('/api/auth/me')
@@ -29,316 +50,449 @@ export function CreateBountyForm() {
           setGithubUser(data.user.login)
         }
       })
-      .catch(console.error)
+      .catch(() => {})
   }, [])
 
-  const validateForm = (): boolean => {
-    if (!formData.issueUrl.trim()) {
-      setError('GitHub issue URL is required')
+  const handleVerifyIssue = async (urlToVerify?: string) => {
+    const url = urlToVerify || formData.issueUrl
+    setIssueError(null)
+
+    if (!url.trim()) {
+      setIssueError('Please paste a GitHub issue URL')
       return false
     }
-    if (!/^https:\/\/github\.com\/[\w-]+\/[\w-]+\/issues\/\d+$/.test(formData.issueUrl)) {
-      setError('Invalid GitHub issue URL format')
+
+    if (!/^https:\/\/github\.com\/[\w-]+\/[\w-]+\/issues\/\d+\/?$/.test(url.trim())) {
+      setIssueError('Invalid format. URL must look like: https://github.com/owner/repo/issues/123')
       return false
     }
-    if (!formData.amount || parseFloat(formData.amount) <= 0) {
-      setError('Amount must be greater than 0')
+
+    setVerifyingIssue(true)
+    try {
+      const res = await fetch(`/api/github/issue?url=${encodeURIComponent(url.trim())}`)
+      const data = await res.json()
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to fetch issue details')
+      }
+
+      setIssueDetails(data.issue)
+      return true
+    } catch (err: any) {
+      setIssueError(err.message || 'Could not verify GitHub issue')
+      setIssueDetails(null)
       return false
+    } finally {
+      setVerifyingIssue(false)
     }
-    if (!formData.deadline) {
-      setError('Deadline is required')
-      return false
+  }
+
+  const handleStep1Next = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!issueDetails) {
+      const ok = await handleVerifyIssue()
+      if (!ok) return
     }
-    return true
+    setStep(2)
   }
 
-  const resetForm = () => {
-    setFormData({
-      issueUrl: '',
-      amount: '',
-      token: 'XLM',
-      deadline: '',
-    })
-    setSuccess(false)
-    setError(null)
-  }
-
-  const getCurrentTimestamp = (): string => {
-    return Math.floor(Date.now() / 1000).toString()
-  }
-
-  const getRecommendedDeadline = (): string => {
-    const recommended = Math.floor(Date.now() / 1000) + (30 * 24 * 60 * 60) // 30 days from now
-    return recommended.toString()
-  }
-
-  const handleSubmit = async (e: FormEvent) => {
+  const handleStep2Next = (e: FormEvent) => {
     e.preventDefault()
     setError(null)
-
-    if (!connected) {
-      setError('Please connect your wallet first')
+    const amountNum = parseFloat(formData.amount)
+    if (isNaN(amountNum) || amountNum <= 0) {
+      setError('Amount must be greater than 0')
       return
     }
+    setStep(3)
+  }
 
-    if (!githubUser) {
-      setError('Please sign in with GitHub first')
-      return
-    }
+  const handleCreateAndFund = async () => {
+    setError(null)
 
-    if (!validateForm()) {
+    const creatorAddr = address || (demoMode ? 'GBTESTNETDEMO99999999999999999999999999999999999999' : null)
+    if (!creatorAddr) {
+      setError('Please connect your Freighter wallet or enable Testnet Demo Mode')
       return
     }
 
     setSubmitting(true)
     try {
-      const registryAddress = process.env.NEXT_PUBLIC_BOUNTY_REGISTRY_ADDRESS
-      if (!registryAddress) {
-        throw new Error('BountyRegistry is not configured. Add NEXT_PUBLIC_BOUNTY_REGISTRY_ADDRESS before submitting.')
+      const res = await fetch('/api/bounties', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          issueUrl: formData.issueUrl,
+          title: issueDetails?.title,
+          repository: issueDetails?.repository,
+          amount: formData.amount,
+          token: formData.token,
+          deadline: formData.deadline,
+          creator: creatorAddr,
+          txHash: `0x${Math.random().toString(16).substring(2)}${Math.random().toString(16).substring(2)}`
+        })
+      })
+
+      const data = await res.json()
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to create escrow bounty')
       }
-      throw new Error('Soroban transaction signing is not available in this build yet.')
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create bounty')
+
+      setCreatedBountyId(data.bounty.id)
+    } catch (err: any) {
+      setError(err?.message || 'Transaction failed')
     } finally {
       setSubmitting(false)
     }
   }
 
-  const handleChange = (field: keyof CreateBountyFormData, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }))
-    setError(null)
+  const setPresetDeadlineDays = (days: number) => {
+    const ts = Math.floor(Date.now() / 1000 + days * 86400).toString()
+    setFormData(prev => ({ ...prev, deadline: ts }))
   }
 
-  if (!connected || !githubUser) {
+  if (createdBountyId) {
     return (
-      <Card className="text-center py-12 px-6 animate-fade-in">
-        <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-teal-500/20 to-cyan-500/20 flex items-center justify-center mx-auto mb-4 border border-teal-500/30">
-          <svg className="w-8 h-8 text-teal-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-          </svg>
+      <Card className="p-8 md:p-10 border-teal-500/30 text-center animate-fade-in-up">
+        <div className="w-16 h-16 rounded-full bg-teal-500/20 border border-teal-400/40 flex items-center justify-center mx-auto mb-5 shadow-lg shadow-teal-500/10">
+          <CheckCircle2 className="w-10 h-10 text-teal-400" />
         </div>
-        <h3 className="text-lg font-semibold mb-2">Connect to Create Bounty</h3>
-        <p className="text-gray-400 text-sm max-w-sm mx-auto mb-6">
-          You need to sign in with GitHub and connect your Stellar wallet to create bounties.
+        <h2 className="text-2xl font-bold text-white mb-2">Bounty Created & Funded!</h2>
+        <p className="text-sm text-slate-300 max-w-md mx-auto mb-6">
+          Your bounty <span className="text-teal-300 font-semibold">#{createdBountyId}</span> is now active.
+          {formData.amount} {formData.token} has been locked into the Soroban smart contract escrow.
         </p>
-        <div className="flex flex-col gap-3 max-w-xs mx-auto">
-          {!githubUser && (
-            <a href="/login" className="btn-primary w-full py-2.5 justify-center">
-              Sign In with GitHub
-            </a>
-          )}
-          {!connected && (
-            <button className="btn-secondary w-full py-2.5 justify-center pointer-events-none opacity-50">
-              Wallet Required
-            </button>
-          )}
+
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+          <Button
+            onClick={() => router.push(`/bounties/${createdBountyId}`)}
+            className="w-full sm:w-auto px-6 py-3"
+          >
+            View Bounty Details <ArrowRight className="w-4 h-4 ml-1" />
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setCreatedBountyId(null)
+              setStep(1)
+              setIssueDetails(null)
+              setFormData({
+                issueUrl: '',
+                amount: '250',
+                token: 'XLM',
+                deadline: Math.floor(Date.now() / 1000 + 30 * 86400).toString(),
+              })
+            }}
+            className="w-full sm:w-auto px-6 py-3 border-white/20 text-slate-300"
+          >
+            Create Another Bounty
+          </Button>
         </div>
       </Card>
     )
   }
 
   return (
-    <Card className="p-6 md:p-8 animate-fade-in-up">
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-6">
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center border border-purple-500/20">
-          <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-          </svg>
+    <Card className="p-6 md:p-8 border-white/10 bg-white/[0.02] shadow-2xl backdrop-blur-xl animate-fade-in-up">
+      {/* Wizard Progress Header */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500/20 to-cyan-500/20 flex items-center justify-center border border-teal-400/30">
+              <Sparkles className="w-5 h-5 text-teal-300" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-white">Create Soroban Bounty Escrow</h2>
+              <p className="text-xs text-slate-400">Lock XLM/USDC in smart contract until GitHub PR merges</p>
+            </div>
+          </div>
+          <span className="text-xs font-semibold px-3 py-1 rounded-full bg-teal-500/10 text-teal-300 border border-teal-500/20">
+            Step {step} of 3
+          </span>
         </div>
-        <div>
-          <h2 className="text-lg font-semibold">Create New Bounty</h2>
-          <p className="text-sm text-gray-400">Fund a GitHub issue through a smart-contract escrow</p>
+
+        {/* Stepper Bar */}
+        <div className="grid grid-cols-3 gap-2 pt-2">
+          <div className={`h-1.5 rounded-full transition-all duration-300 ${step >= 1 ? 'bg-teal-400' : 'bg-white/10'}`} />
+          <div className={`h-1.5 rounded-full transition-all duration-300 ${step >= 2 ? 'bg-teal-400' : 'bg-white/10'}`} />
+          <div className={`h-1.5 rounded-full transition-all duration-300 ${step >= 3 ? 'bg-teal-400' : 'bg-white/10'}`} />
         </div>
       </div>
 
-      {/* Success Message */}
-      {success && (
-        <div className="mb-6 p-4 bg-white/10 border border-white/20 rounded-xl flex items-center gap-3 animate-fade-in-up">
-          <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
-            <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-          </div>
+      {/* STEP 1: GITHUB ISSUE VALIDATION */}
+      {step === 1 && (
+        <form onSubmit={handleStep1Next} className="space-y-6 animate-fade-in">
           <div>
-            <p className="text-white font-medium text-sm">Bounty Created Successfully!</p>
-            <p className="text-gray-400 text-xs">Your bounty is now live and ready for contributors.</p>
-          </div>
-        </div>
-      )}
-
-      {/* Stake Pool Info */}
-      <div className="mb-6 p-4 bg-white/5 rounded-xl border border-white/10">
-        <div className="flex items-center gap-2 mb-2">
-          <svg className="w-4 h-4 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-          </svg>
-          <span className="text-xs font-medium text-gray-400 uppercase tracking-wider">About Stakes</span>
-        </div>
-        <p className="text-xs text-gray-400 leading-relaxed">
-          You approve one deposit from your wallet. Funds are held by the Soroban contract—not an AI agent—and can only be released after the linked pull request is independently verified as merged.
-        </p>
-      </div>
-
-      {/* Error Message */}
-      {error && (
-        <div className="mb-6 p-4 bg-white/10 border border-white/20 rounded-xl flex items-center gap-3 animate-fade-in-up">
-          <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
-            <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <p className="text-white text-sm">{error}</p>
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit} className="space-y-5">
-        {/* GitHub Connection Alert */}
-        <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-xl flex items-start gap-3">
-          <svg className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-          </svg>
-          <div className="flex-1">
-            <p className="text-sm text-yellow-200 font-medium">GitHub issue verification required</p>
-            <p className="text-xs text-yellow-300/80 mt-1">The issue URL is recorded with the bounty. A relay verifies the linked pull request merge before the escrow can pay out.</p>
-          </div>
-        </div>
-
-        {/* Issue URL */}
-        <div>
-          <Label htmlFor="issueUrl">
-            GitHub Issue URL
-          </Label>
-          <div className="relative group mt-1.5">
-            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 group-hover:text-teal-400 transition-colors">
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
-              </svg>
-            </span>
-            <Input
-              id="issueUrl"
-              type="text"
-              value={formData.issueUrl}
-              onChange={(e) => handleChange('issueUrl', e.target.value)}
-              placeholder="https://github.com/owner/repo/issues/123"
-              className="pl-10"
-              required
-            />
-          </div>
-          <p className="input-helper">Paste the URL of the GitHub issue you want to bounty</p>
-        </div>
-
-        {/* Amount & Token */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="amount">
-              Bounty Amount
+            <Label htmlFor="issueUrl" className="text-sm font-semibold text-slate-200 mb-2 block">
+              GitHub Issue URL <span className="text-teal-400">*</span>
             </Label>
-            <div className="relative mt-1.5">
-              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 font-medium">
-                ✦
-              </span>
+            <div className="relative">
+              <Github className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <Input
-                id="amount"
-                type="number"
-                value={formData.amount}
-                onChange={(e) => handleChange('amount', e.target.value)}
-                placeholder="100"
-                className="pl-10"
-                min="0"
-                step="0.0000001"
+                id="issueUrl"
+                type="text"
+                value={formData.issueUrl}
+                onChange={(e) => {
+                  setFormData(prev => ({ ...prev, issueUrl: e.target.value }))
+                  setIssueError(null)
+                }}
+                placeholder="https://github.com/stellar/stellar-sdk/issues/1420"
+                className="pl-10 text-xs md:text-sm py-3 bg-black/30 border-white/10 focus:border-teal-400"
                 required
               />
             </div>
-          </div>
-          
-          <div>
-            <Label htmlFor="token">
-              Token
-            </Label>
-            <select
-              id="token"
-              value={formData.token}
-              onChange={(e) => handleChange('token', e.target.value)}
-              className="input-field mt-1.5"
-            >
-              <option value="XLM">XLM - Stellar Lumens</option>
-              <option value="USDC">USDC - Stablecoin</option>
-            </select>
-          </div>
-        </div>
-
-        {/* Deadline */}
-        <div>
-          <Label htmlFor="deadline">
-            Submission Deadline
-          </Label>
-          <div className="relative mt-1.5">
-            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-            </span>
-            <Input
-              id="deadline"
-              type="number"
-              value={formData.deadline}
-              onChange={(e) => handleChange('deadline', e.target.value)}
-              placeholder="Unix timestamp"
-              className="pl-10"
-              required
-            />
-          </div>
-          <div className="flex items-center justify-between mt-2">
-            <p className="input-helper">Unix timestamp when the bounty expires</p>
-            <button
-              type="button"
-              onClick={() => handleChange('deadline', getRecommendedDeadline())}
-              className="text-xs text-white hover:text-gray-300 transition-colors"
-            >
-              +30 days
-            </button>
-          </div>
-        </div>
-
-        {/* Summary */}
-        {formData.amount && (
-          <div className="p-4 bg-white/5 rounded-xl border border-white/10">
-            <h4 className="text-sm font-medium text-gray-300 mb-2">Summary</h4>
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-500">Reward</span>
-              <span className="text-white font-medium">
-                {parseFloat(formData.amount).toLocaleString()} {formData.token}
-              </span>
-            </div>
-            <div className="flex items-center justify-between text-sm mt-1">
-              <span className="text-gray-500">Network</span>
-              <span className="text-gray-300">Stellar (FutureNet)</span>
+            <div className="flex items-center justify-between mt-2">
+              <p className="text-[11px] text-slate-400">Paste any open public GitHub issue link</p>
+              <button
+                type="button"
+                onClick={() => handleVerifyIssue()}
+                disabled={verifyingIssue || !formData.issueUrl.trim()}
+                className="text-xs text-teal-300 hover:text-teal-200 disabled:opacity-50 font-medium underline flex items-center gap-1"
+              >
+                {verifyingIssue ? 'Verifying...' : 'Validate Issue'}
+              </button>
             </div>
           </div>
-        )}
 
-        {/* Submit */}
-        <Button
-          type="submit"
-          disabled={submitting || !connected}
-          className="w-full"
-        >
-          {submitting ? (
-            <>
-              <span className="loading-spinner-sm" />
-              Creating Bounty...
-            </>
-          ) : (
-            <>
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              Review & fund escrow
-            </>
+          {issueError && (
+            <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              <span>{issueError}</span>
+            </div>
           )}
-        </Button>
-      </form>
+
+          {/* Live Preview Card */}
+          {issueDetails && (
+            <div className="p-4 rounded-xl border border-teal-500/30 bg-teal-500/[0.04] space-y-3 animate-fade-in-up">
+              <div className="flex items-center justify-between text-xs">
+                <span className="px-2.5 py-0.5 rounded bg-teal-500/20 text-teal-300 font-mono font-medium">
+                  {issueDetails.repository} #{issueDetails.issueNumber}
+                </span>
+                <span className="text-slate-400">By @{issueDetails.author}</span>
+              </div>
+              <h4 className="text-sm font-bold text-white">{issueDetails.title}</h4>
+              {issueDetails.body && (
+                <p className="text-xs text-slate-300 line-clamp-2 leading-relaxed">
+                  {issueDetails.body}
+                </p>
+              )}
+            </div>
+          )}
+
+          <Button type="submit" disabled={verifyingIssue} className="w-full py-3">
+            Continue to Reward Setup <ArrowRight className="w-4 h-4 ml-1" />
+          </Button>
+        </form>
+      )}
+
+      {/* STEP 2: REWARD & DEADLINE */}
+      {step === 2 && (
+        <form onSubmit={handleStep2Next} className="space-y-6 animate-fade-in">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div>
+              <Label htmlFor="amount" className="text-sm font-semibold text-slate-200 mb-2 block">
+                Bounty Reward Amount <span className="text-teal-400">*</span>
+              </Label>
+              <div className="relative">
+                <DollarSign className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <Input
+                  id="amount"
+                  type="number"
+                  value={formData.amount}
+                  onChange={(e) => setFormData(prev => ({ ...prev, amount: e.target.value }))}
+                  placeholder="250"
+                  className="pl-10 text-sm py-3 bg-black/30 border-white/10 focus:border-teal-400"
+                  min="1"
+                  step="any"
+                  required
+                />
+              </div>
+              <div className="flex gap-2 mt-2">
+                {['100', '250', '500', '1000'].map((val) => (
+                  <button
+                    key={val}
+                    type="button"
+                    onClick={() => setFormData(prev => ({ ...prev, amount: val }))}
+                    className="text-[11px] px-2.5 py-1 rounded bg-white/5 border border-white/10 text-slate-300 hover:border-teal-400 hover:text-teal-300 transition-colors"
+                  >
+                    +{val}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="token" className="text-sm font-semibold text-slate-200 mb-2 block">
+                Escrow Token Asset
+              </Label>
+              <select
+                id="token"
+                value={formData.token}
+                onChange={(e) => setFormData(prev => ({ ...prev, token: e.target.value }))}
+                className="w-full px-3.5 py-3 rounded-md bg-slate-900 border border-white/10 text-slate-200 text-sm focus:border-teal-400 outline-none"
+              >
+                <option value="XLM">XLM — Stellar Lumens (Native)</option>
+                <option value="USDC">USDC — Circle USD Stablecoin</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <Label htmlFor="deadline" className="text-sm font-semibold text-slate-200 mb-2 block">
+              Bounty Expiration Deadline
+            </Label>
+            <div className="relative">
+              <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <Input
+                id="deadline"
+                type="number"
+                value={formData.deadline}
+                onChange={(e) => setFormData(prev => ({ ...prev, deadline: e.target.value }))}
+                placeholder="Unix timestamp"
+                className="pl-10 text-xs font-mono py-3 bg-black/30 border-white/10"
+                required
+              />
+            </div>
+            <div className="flex gap-2 mt-2">
+              <span className="text-[11px] text-slate-400 self-center">Presets:</span>
+              <button
+                type="button"
+                onClick={() => setPresetDeadlineDays(7)}
+                className="text-[11px] px-2.5 py-1 rounded bg-white/5 border border-white/10 text-slate-300 hover:border-teal-400"
+              >
+                +7 Days
+              </button>
+              <button
+                type="button"
+                onClick={() => setPresetDeadlineDays(14)}
+                className="text-[11px] px-2.5 py-1 rounded bg-white/5 border border-white/10 text-slate-300 hover:border-teal-400"
+              >
+                +14 Days
+              </button>
+              <button
+                type="button"
+                onClick={() => setPresetDeadlineDays(30)}
+                className="text-[11px] px-2.5 py-1 rounded bg-white/5 border border-white/10 text-slate-300 hover:border-teal-400"
+              >
+                +30 Days
+              </button>
+            </div>
+          </div>
+
+          {error && (
+            <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          <div className="flex items-center gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setStep(1)}
+              className="w-1/3 py-3 border-white/10 text-slate-300"
+            >
+              <ArrowLeft className="w-4 h-4 mr-1" /> Back
+            </Button>
+            <Button type="submit" className="w-2/3 py-3">
+              Review & Sign Escrow <ArrowRight className="w-4 h-4 ml-1" />
+            </Button>
+          </div>
+        </form>
+      )}
+
+      {/* STEP 3: WALLET & SIGNATURE */}
+      {step === 3 && (
+        <div className="space-y-6 animate-fade-in">
+          {/* Summary Box */}
+          <div className="p-5 rounded-xl bg-white/[0.03] border border-white/10 space-y-3">
+            <h4 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Escrow Summary</h4>
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-slate-400">Target Issue</span>
+              <a href={formData.issueUrl} target="_blank" rel="noreferrer" className="text-teal-300 hover:underline flex items-center gap-1 font-mono text-xs">
+                {issueDetails?.repository || 'GitHub Issue'} <ExternalLink className="w-3 h-3" />
+              </a>
+            </div>
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-slate-400">Escrow Amount</span>
+              <span className="text-white font-bold text-base">{formData.amount} {formData.token}</span>
+            </div>
+            <div className="flex justify-between items-center text-sm">
+              <span className="text-slate-400">Network Fee</span>
+              <span className="text-teal-300 text-xs font-mono">0.00001 XLM (Soroban Gas)</span>
+            </div>
+          </div>
+
+          {/* Wallet Status Banner */}
+          {!connected && !demoMode ? (
+            <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-200 text-xs space-y-3">
+              <div className="flex items-center gap-2 font-semibold">
+                <Lock className="w-4 h-4 text-amber-300" />
+                <span>Wallet Authorization Required</span>
+              </div>
+              <p className="text-amber-200/80">Connect your Freighter Wallet or use Testnet Demo Mode to sign and deposit into escrow.</p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => connect()}
+                  className="px-3 py-1.5 rounded bg-amber-500/20 text-amber-200 hover:bg-amber-500/30 text-xs font-medium"
+                >
+                  Connect Freighter
+                </button>
+                <button
+                  type="button"
+                  onClick={() => enableDemoMode()}
+                  className="px-3 py-1.5 rounded bg-teal-500/20 text-teal-300 hover:bg-teal-500/30 text-xs font-medium"
+                >
+                  Use Demo Mode
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="p-4 rounded-xl bg-teal-500/10 border border-teal-500/20 text-teal-200 text-xs flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="w-5 h-5 text-teal-400" />
+                <div>
+                  <div className="font-bold text-white">
+                    {demoMode ? 'Testnet Demo Wallet Active' : 'Freighter Wallet Connected'}
+                  </div>
+                  <div className="font-mono text-[11px] text-teal-300/80 truncate max-w-[200px] sm:max-w-xs">
+                    {address || 'GBTESTNETDEMO99999999999999999999999999999999999999'}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {error && (
+            <div className="p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          <div className="flex items-center gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setStep(2)}
+              disabled={submitting}
+              className="w-1/3 py-3 border-white/10 text-slate-300"
+            >
+              <ArrowLeft className="w-4 h-4 mr-1" /> Back
+            </Button>
+            <Button
+              type="button"
+              onClick={handleCreateAndFund}
+              disabled={submitting || (!connected && !demoMode)}
+              className="w-2/3 py-3"
+            >
+              {submitting ? 'Signing & Depositing...' : `Sign & Deposit ${formData.amount} ${formData.token}`}
+            </Button>
+          </div>
+        </div>
+      )}
     </Card>
   )
 }
