@@ -60,11 +60,13 @@ export function BountyCard({ bounty, onClick }: Props) {
 
   return (
     <GlowBorderCard
-      className="flex flex-col h-full cursor-pointer group hover:scale-[1.02] transition-transform duration-300"
+      className="flex flex-col h-full cursor-pointer group hover:scale-[1.01] transition-transform duration-300"
       colorPreset="stellar"
       onClick={handleCardClick}
       borderRadius="1.125rem"
-      inset="-0.5rem"
+      inset="-0.25rem"
+      borderWidth="0.9em"
+      blurAmount="0.45em"
     >
       <div className="flex flex-col h-full w-full">
       {/* Header with status */}

@@ -2,8 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { formatNumber, formatPercent, formatXLM, truncateAddress } from './formatters'
 
 describe('display formatters', () => {
-  it('formats native Stellar amounts', () => {
-    expect(formatXLM(12_500_000)).toBe('1.25 XLM')
+  it('formats bounty amounts entered in XLM', () => {
+    expect(formatXLM(1000)).toBe('1000 XLM')
+    expect(formatXLM(12.5)).toBe('12.5 XLM')
   })
 
   it('formats compact values and signed percentages', () => {

@@ -42,7 +42,7 @@ function LoginContent() {
               <div className="flex items-start gap-3">
                 <CheckCircle2 className="h-4 w-4 shrink-0 text-teal-400 mt-0.5" />
                 <span>Link GitHub PRs & issues directly to automated crypto payouts</span>
-              </div>
+              </div>  
               <div className="flex items-start gap-3">
                 <CheckCircle2 className="h-4 w-4 shrink-0 text-teal-400 mt-0.5" />
                 <span>Non-custodial wallet signatures for instant escrow funding</span>

@@ -1,11 +1,11 @@
 /**
- * Format amount to XLM display string
+ * Format amount to XLM display string.
  */
-export function formatXLM(satoshi: number): string {
-  const xlm = satoshi / 10000000
-  return `${xlm.toLocaleString('en-US', { 
-    minimumFractionDigits: 2, 
-    maximumFractionDigits: 2 
+export function formatXLM(amount: number): string {
+  return `${amount.toLocaleString('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
+    useGrouping: false,
   })} XLM`
 }
 
