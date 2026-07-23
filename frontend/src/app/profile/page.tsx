@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import {
   Check,
@@ -29,6 +30,8 @@ const networks = ['Stellar Testnet', 'Stellar Mainnet', 'Stellar Futurenet', 'Et
 
 export default function ProfilePage() {
   const { connected, address, connect, disconnect, connecting } = useWallet()
+  const searchParams = useSearchParams()
+  const showDebug = searchParams?.get('debug') === 'wallet'
   const [wallets, setWallets] = useState<SavedWallet[]>([])
   const [network, setNetwork] = useState(networks[0])
   const [walletAddress, setWalletAddress] = useState('')
@@ -114,6 +117,11 @@ export default function ProfilePage() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-8 py-6">
+
+      {showDebug && (
+        // Lazy import to avoid adding to core UI unless requested
+        /*#__PURE__*/ React.createElement(require('@/components/WalletDebug').WalletDebug)
+      )}
 
       {/* Profile Header & Summary Card */}
       <section className="glass-card overflow-hidden p-0 border-teal-500/20">

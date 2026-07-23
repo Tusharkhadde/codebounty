@@ -30,6 +30,7 @@ export interface WalletState {
   network: string;
   connecting: boolean;
   error: string | null;
+  rawError?: any | null;
 }
 
 export interface CreateBountyFormData {

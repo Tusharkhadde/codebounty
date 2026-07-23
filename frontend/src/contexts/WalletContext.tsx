@@ -41,6 +41,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     network: 'testnet',
     connecting: false,
     error: null,
+    rawError: null,
   })
   const [freighterInstalled, setFreighterInstalled] = useState<boolean>(true)
   const [demoMode, setDemoMode] = useState<boolean>(false)
@@ -213,6 +214,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         network,
         connecting: false,
         error: null,
+        rawError: null,
       })
       safeSetFreighterInstalled(true)
     } catch (err) {
@@ -246,6 +248,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
         connected: false,
         connecting: false,
         error: friendly,
+        rawError: err,
       }))
 
     } finally {
@@ -271,7 +274,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   }, [safeSetState])
 
   const clearError = useCallback(() => {
-    safeSetState(prev => ({ ...prev, error: null }))
+    safeSetState(prev => ({ ...prev, error: null, rawError: null }))
   }, [safeSetState])
 
   return (
