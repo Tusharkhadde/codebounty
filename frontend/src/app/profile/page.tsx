@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import {
@@ -22,13 +22,16 @@ import {
   Clock,
   Sparkles
 } from 'lucide-react'
+import dynamic from 'next/dynamic'
 import { useWallet } from '@/contexts/WalletContext'
+
+const WalletDebug = dynamic(() => import('@/components/WalletDebug').then(m => ({ default: m.WalletDebug })), { ssr: false })
 
 type SavedWallet = { id: string; network: string; address: string; label: string }
 const storageKey = 'codebounty.saved-wallets'
 const networks = ['Stellar Testnet', 'Stellar Mainnet', 'Stellar Futurenet', 'Ethereum', 'Polygon', 'Base', 'Solana']
 
-export default function ProfilePage() {
+function ProfileContent() {
   const { connected, address, connect, disconnect, connecting } = useWallet()
   const searchParams = useSearchParams()
   const showDebug = searchParams?.get('debug') === 'wallet'
@@ -118,10 +121,7 @@ export default function ProfilePage() {
   return (
     <div className="mx-auto max-w-5xl space-y-8 py-6">
 
-      {showDebug && (
-        // Lazy import to avoid adding to core UI unless requested
-        /*#__PURE__*/ React.createElement(require('@/components/WalletDebug').WalletDebug)
-      )}
+      {showDebug && <WalletDebug />}
 
       {/* Profile Header & Summary Card */}
       <section className="glass-card overflow-hidden p-0 border-teal-500/20">
@@ -410,5 +410,20 @@ export default function ProfilePage() {
       )}
 
     </div>
+  )
+}
+
+export default function ProfilePage() {
+  return (
+    <Suspense fallback={
+      <div className="mx-auto flex min-h-[60vh] max-w-md items-center justify-center text-center">
+        <div className="space-y-4">
+          <div className="loading-spinner-lg mx-auto" />
+          <p className="text-sm text-slate-400">Loading profile...</p>
+        </div>
+      </div>
+    }>
+      <ProfileContent />
+    </Suspense>
   )
 }
