@@ -1,0 +1,57 @@
+import type { Bounty } from '@/types'
+
+const BOUNTIES_STORE: Bounty[] = [
+  {
+    id: 101,
+    issue_url: 'https://github.com/stellar/stellar-sdk/issues/1420',
+    title: 'Support Soroban Auth Next Spec v21',
+    repository: 'stellar/stellar-sdk',
+    issue_number: 1420,
+    creator: 'GCNYD3V5QZVK4LNWJXBQ2F5R4T2S64PL5S2W5N7Z',
+    amount: 1500,
+    token: 'XLM',
+    deadline: Math.floor(Date.now() / 1000) + 14 * 86400,
+    status: 'funded',
+    linked_pr_url: null,
+    contributor: null,
+    funded_at: Math.floor(Date.now() / 1000) - 86400,
+    paid_at: 0,
+    tx_hash: '0x8f2a419c8b73e5f1a2d409e6c518b334',
+  },
+  {
+    id: 102,
+    issue_url: 'https://github.com/soroban-example/escrow/issues/45',
+    title: 'Implement Multi-Sig Timelock Contract Verification',
+    repository: 'soroban-example/escrow',
+    issue_number: 45,
+    creator: 'GBTESTNETDEMO99999999999999999999999999999999999999',
+    amount: 500,
+    token: 'USDC',
+    deadline: Math.floor(Date.now() / 1000) + 7 * 86400,
+    status: 'linked',
+    linked_pr_url: 'https://github.com/soroban-example/escrow/pull/52',
+    contributor: 'GAPK4U290ZX812903810293810293810293810293',
+    funded_at: Math.floor(Date.now() / 1000) - 172800,
+    paid_at: 0,
+    tx_hash: '0x3c7149a180f92b7c93e4a',
+  },
+  {
+    id: 103,
+    issue_url: 'https://github.com/stellar/rs-soroban-sdk/issues/980',
+    title: 'Optimize WASM Storage Footprint for Custom Types',
+    repository: 'stellar/rs-soroban-sdk',
+    issue_number: 980,
+    creator: 'GAKJ293810293810293810293810293810293810293',
+    amount: 3200,
+    token: 'XLM',
+    deadline: Math.floor(Date.now() / 1000) - 86400,
+    status: 'paid',
+    linked_pr_url: 'https://github.com/stellar/rs-soroban-sdk/pull/1012',
+    contributor: 'GCNYD3V5QZVK4LNWJXBQ2F5R4T2S64PL5S2W5N7Z',
+    funded_at: Math.floor(Date.now() / 1000) - 604800,
+    paid_at: Math.floor(Date.now() / 1000) - 86400,
+    tx_hash: '0x9918237192b3c102',
+  }
+]
+
+export { BOUNTIES_STORE }
