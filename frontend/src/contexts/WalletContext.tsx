@@ -93,6 +93,9 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       if (/declined|denied|rejected|cancelled/i.test(msg)) {
         return 'Connection declined in Freighter. Open Freighter extension, unlock it, and approve access.'
       }
+      if (/orphaned|listener|stream|liveness|emitter|multiplex/i.test(msg)) {
+        return 'Freighter extension lost background connection. Please refresh the page (F5).'
+      }
       return `Freighter error: ${msg}`
     }
     return null
@@ -222,16 +225,21 @@ export function WalletProvider({ children }: { children: ReactNode }) {
 
       const message = err instanceof Error ? err.message : 'Failed to connect wallet'
 
+      const isStreamOrphaned = /orphaned|listener|stream|liveness|emitter|multiplex/i.test(message)
       const notInstalled =
-        /not installed|not detected|unaccessible|cannot read|undefined/i.test(message)
+        !isStreamOrphaned && /not installed|not detected|unaccessible|cannot read|undefined/i.test(message)
       const timedOut = /timed out/i.test(message)
       const popupBlocked = /popup|blocked|closed window/i.test(message)
       const declined = /declined|denied|rejected/i.test(message)
 
-      safeSetFreighterInstalled(!notInstalled)
+      if (!isStreamOrphaned) {
+        safeSetFreighterInstalled(!notInstalled)
+      }
 
       let friendly: string
-      if (notInstalled) {
+      if (isStreamOrphaned) {
+        friendly = 'Freighter browser extension lost background connection. Please refresh the page (F5) to re-connect.'
+      } else if (notInstalled) {
         friendly = 'Freighter extension is not detected in your browser. Install Freighter or try Testnet Demo Mode below!'
       } else if (timedOut) {
         friendly = 'Connection timed out. Open your Freighter browser extension and make sure it is unlocked.'
