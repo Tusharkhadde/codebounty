@@ -138,6 +138,15 @@ export function CreateBountyForm() {
         throw new Error(data.error || 'Failed to create escrow bounty')
       }
 
+      // Persist in localStorage so it never disappears on server restarts
+      try {
+        const localSaved = window.localStorage.getItem('codebounty.user-bounties')
+        const existing = localSaved ? JSON.parse(localSaved) : []
+        window.localStorage.setItem('codebounty.user-bounties', JSON.stringify([data.bounty, ...existing]))
+      } catch (e) {
+        console.error('Failed to save bounty to localStorage', e)
+      }
+
       setCreatedBountyId(data.bounty.id)
     } catch (err: any) {
       setError(err?.message || 'Transaction failed')

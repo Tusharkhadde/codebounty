@@ -44,15 +44,43 @@ export default function BountyDetailsPage() {
   const fetchBounty = useCallback(async () => {
     try {
       setLoading(true)
+      setError(null)
       const res = await fetch(`/api/bounties/${bountyId}`)
       const data = await res.json()
 
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Bounty not found')
+      if (res.ok && data.success && data.bounty) {
+        setBounty(data.bounty)
+        return
       }
 
-      setBounty(data.bounty)
+      // Check localStorage for client-side created bounties
+      const localSaved = window.localStorage.getItem('codebounty.user-bounties')
+      if (localSaved) {
+        const parsed = JSON.parse(localSaved)
+        const found = parsed.find((b: Bounty) => String(b.id) === String(bountyId))
+        if (found) {
+          setBounty(found)
+          return
+        }
+      }
+
+      throw new Error(data?.error || 'Bounty not found')
     } catch (err: any) {
+      // Final fallback check in case network error
+      const localSaved = window.localStorage.getItem('codebounty.user-bounties')
+      if (localSaved) {
+        try {
+          const parsed = JSON.parse(localSaved)
+          const found = parsed.find((b: Bounty) => String(b.id) === String(bountyId))
+          if (found) {
+            setBounty(found)
+            setError(null)
+            return
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
       setError(err?.message || 'Failed to load bounty')
     } finally {
       setLoading(false)

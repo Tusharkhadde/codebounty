@@ -23,11 +23,38 @@ export default function BountiesPage() {
     fetch('/api/bounties')
       .then(res => res.json())
       .then(data => {
+        let serverBounties: Bounty[] = []
         if (data.success && Array.isArray(data.bounties)) {
-          setBounties(data.bounties)
+          serverBounties = data.bounties
+        }
+        // Load user-created bounties from localStorage
+        try {
+          const localSaved = window.localStorage.getItem('codebounty.user-bounties')
+          if (localSaved) {
+            const userBounties: Bounty[] = JSON.parse(localSaved)
+            // Merge and deduplicate by ID
+            const map = new Map<number, Bounty>()
+            userBounties.forEach(b => map.set(b.id, b))
+            serverBounties.forEach(b => map.set(b.id, b))
+            setBounties(Array.from(map.values()))
+            return
+          }
+        } catch (e) {
+          // ignore
+        }
+        setBounties(serverBounties)
+      })
+      .catch(() => {
+        // Fallback to localStorage if API fails
+        try {
+          const localSaved = window.localStorage.getItem('codebounty.user-bounties')
+          if (localSaved) {
+            setBounties(JSON.parse(localSaved))
+          }
+        } catch (e) {
+          // ignore
         }
       })
-      .catch(console.error)
       .finally(() => setLoading(false))
   }, [])
 
