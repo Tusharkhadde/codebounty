@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useWallet } from '@/contexts/WalletContext'
 import { Button } from '@/components/ui/button'
 import {
@@ -18,6 +18,7 @@ import {
 import { LayoutDashboard, Award, PlusCircle, Info, User, Wallet, LogOut, AlertCircle, X } from 'lucide-react'
 
 export function Sidebar() {
+  const router = useRouter()
   const pathname = usePathname()
   const { connected, connecting, error, disconnect, address, connect, enableDemoMode, demoMode, clearError } = useWallet()
 

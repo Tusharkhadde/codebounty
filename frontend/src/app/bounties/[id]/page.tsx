@@ -114,6 +114,20 @@ export default function BountyDetailsPage() {
           contributor: address || 'GAPK4U290ZX812903810293810293810293810293'
         })
       })
+      const data = await res.json()
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to link pull request')
+      }
+
+      setBounty(data.bounty)
+      setShowLinkModal(false)
+      setPrUrl('')
+    } catch (err: any) {
+      setLinkError(err?.message || 'Failed to link pull request')
+    } finally {
+      setLinking(false)
+    }
+  }
 
   const handleCancelBounty = async () => {
     if (!confirm('Are you sure you want to cancel this bounty and refund the escrow funds back to your wallet?')) return
@@ -140,7 +154,6 @@ export default function BountyDetailsPage() {
     if (!confirm('Permanently delete this test bounty?')) return
     try {
       await fetch(`/api/bounties/${bountyId}`, { method: 'DELETE' })
-      // Clear from localStorage as well
       const localSaved = window.localStorage.getItem('codebounty.user-bounties')
       if (localSaved) {
         const parsed = JSON.parse(localSaved).filter((b: Bounty) => String(b.id) !== String(bountyId))
@@ -148,16 +161,6 @@ export default function BountyDetailsPage() {
       }
       window.location.href = '/bounties'
     } catch (e) {}
-  }
-
-      setBounty(data.bounty)
-      setShowLinkModal(false)
-      setPrUrl('')
-    } catch (err: any) {
-      setLinkError(err?.message || 'Failed to link pull request')
-    } finally {
-      setLinking(false)
-    }
   }
 
   const handleSimulatePayout = async () => {
