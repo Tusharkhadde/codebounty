@@ -1,4 +1,5 @@
 import { neon } from '@neondatabase/serverless'
+import { prisma } from '@/lib/prisma'
 import type { Bounty } from '@/types'
 
 const CLOUD_KV_URL = 'https://kvdb.io/9A3yR2mK7xL5pQ8j/codebounty_global_bounties'
@@ -42,13 +43,39 @@ export async function initDb() {
     tableInitialized = true
     return true
   } catch (err) {
-    console.error('Failed to initialize Neon database table:', err)
+    console.error('Failed to initialize database table:', err)
     return false
   }
 }
 
 export async function getBountiesFromDb(): Promise<Bounty[] | null> {
-  // 1. Try Neon DB if DATABASE_URL connection string is configured
+  // 1. Try Prisma ORM first if DATABASE_URL environment variable is configured
+  if (process.env.DATABASE_URL) {
+    try {
+      const rows = await prisma.bounty.findMany({
+        orderBy: { id: 'desc' },
+      })
+      if (rows && rows.length > 0) {
+        return rows.map(r => ({
+          id: r.id,
+          issue_url: r.issueUrl,
+          creator: r.creator,
+          amount: r.amount,
+          token: r.token,
+          deadline: Number(r.deadline),
+          status: r.status as any,
+          linked_pr_url: r.linkedPrUrl,
+          contributor: r.contributor,
+          funded_at: Number(r.fundedAt),
+          paid_at: Number(r.paidAt),
+        }))
+      }
+    } catch (err) {
+      console.error('Prisma query error:', err)
+    }
+  }
+
+  // 2. Try Neon SQL driver
   const sql = getSql()
   if (sql) {
     try {
@@ -78,7 +105,7 @@ export async function getBountiesFromDb(): Promise<Bounty[] | null> {
     }
   }
 
-  // 2. Cloud serverless persistence fallback so all users/friends see bounties across different devices
+  // 3. Cloud serverless persistence fallback so all users/friends see bounties across different devices
   try {
     const res = await fetch(CLOUD_KV_URL, { cache: 'no-store' })
     if (res.ok) {
@@ -97,7 +124,38 @@ export async function getBountiesFromDb(): Promise<Bounty[] | null> {
 export async function saveBountyToDb(bounty: Bounty): Promise<boolean> {
   let saved = false
 
-  // 1. Save to Neon DB if configured
+  // 1. Save with Prisma ORM if DATABASE_URL is set
+  if (process.env.DATABASE_URL) {
+    try {
+      await prisma.bounty.upsert({
+        where: { id: bounty.id },
+        update: {
+          status: bounty.status,
+          linkedPrUrl: bounty.linked_pr_url,
+          contributor: bounty.contributor,
+          paidAt: BigInt(bounty.paid_at || 0),
+        },
+        create: {
+          id: bounty.id,
+          issueUrl: bounty.issue_url,
+          creator: bounty.creator,
+          amount: bounty.amount,
+          token: bounty.token,
+          deadline: BigInt(bounty.deadline),
+          status: bounty.status,
+          linkedPrUrl: bounty.linked_pr_url,
+          contributor: bounty.contributor,
+          fundedAt: BigInt(bounty.funded_at),
+          paidAt: BigInt(bounty.paid_at || 0),
+        },
+      })
+      saved = true
+    } catch (err) {
+      console.error('Prisma upsert error:', err)
+    }
+  }
+
+  // 2. Save with Neon SQL driver if DATABASE_URL / NEON_DATABASE_URL is set
   const sql = getSql()
   if (sql) {
     try {
@@ -117,7 +175,7 @@ export async function saveBountyToDb(bounty: Bounty): Promise<boolean> {
     }
   }
 
-  // 2. Save to Cloud KV storage so all devices across the web share the exact same global list
+  // 3. Save to Cloud KV storage so all devices across the web share the exact same global list
   try {
     const existing = (await getBountiesFromDb()) || []
     const map = new Map<number, Bounty>()
@@ -126,7 +184,6 @@ export async function saveBountyToDb(bounty: Bounty): Promise<boolean> {
       if (!map.has(b.id)) {
         map.set(b.id, b)
       } else {
-        // preserve updated status
         const curr = map.get(b.id)!
         map.set(b.id, { ...b, ...curr })
       }
