@@ -1,5 +1,5 @@
 import { neon } from '@neondatabase/serverless'
-import { prisma } from '@/lib/prisma'
+import { getPrisma } from '@/lib/prisma'
 import type { Bounty } from '@/types'
 
 const CLOUD_KV_URL = 'https://kvdb.io/9A3yR2mK7xL5pQ8j/codebounty_global_bounties'
@@ -49,23 +49,24 @@ export async function initDb() {
 }
 
 export async function getBountiesFromDb(): Promise<Bounty[] | null> {
-  // 1. Try Prisma ORM first if DATABASE_URL environment variable is configured
-  if (process.env.DATABASE_URL) {
+  // 1. Try Prisma ORM first if configured
+  const prisma = getPrisma()
+  if (prisma) {
     try {
       const rows = await prisma.bounty.findMany({
         orderBy: { id: 'desc' },
       })
       if (rows && rows.length > 0) {
-        return rows.map(r => ({
-          id: r.id,
-          issue_url: r.issueUrl,
-          creator: r.creator,
-          amount: r.amount,
-          token: r.token,
+        return rows.map((r: any) => ({
+          id: Number(r.id),
+          issue_url: String(r.issueUrl),
+          creator: String(r.creator),
+          amount: Number(r.amount),
+          token: r.token ? String(r.token) : null,
           deadline: Number(r.deadline),
           status: r.status as any,
-          linked_pr_url: r.linkedPrUrl,
-          contributor: r.contributor,
+          linked_pr_url: r.linkedPrUrl ? String(r.linkedPrUrl) : null,
+          contributor: r.contributor ? String(r.contributor) : null,
           funded_at: Number(r.fundedAt),
           paid_at: Number(r.paidAt),
         }))
@@ -86,7 +87,7 @@ export async function getBountiesFromDb(): Promise<Bounty[] | null> {
         ORDER BY id DESC
       `
       if (rows && rows.length > 0) {
-        return rows.map(r => ({
+        return rows.map((r: any) => ({
           id: Number(r.id),
           issue_url: String(r.issue_url),
           creator: String(r.creator),
@@ -124,8 +125,9 @@ export async function getBountiesFromDb(): Promise<Bounty[] | null> {
 export async function saveBountyToDb(bounty: Bounty): Promise<boolean> {
   let saved = false
 
-  // 1. Save with Prisma ORM if DATABASE_URL is set
-  if (process.env.DATABASE_URL) {
+  // 1. Save with Prisma ORM if configured
+  const prisma = getPrisma()
+  if (prisma) {
     try {
       await prisma.bounty.upsert({
         where: { id: bounty.id },
@@ -180,7 +182,7 @@ export async function saveBountyToDb(bounty: Bounty): Promise<boolean> {
     const existing = (await getBountiesFromDb()) || []
     const map = new Map<number, Bounty>()
     map.set(bounty.id, bounty)
-    existing.forEach(b => {
+    existing.forEach((b: Bounty) => {
       if (!map.has(b.id)) {
         map.set(b.id, b)
       } else {
