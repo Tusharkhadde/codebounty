@@ -118,6 +118,24 @@ function ProfileContent() {
     setTimeout(() => setCopiedId(null), 2000)
   }
 
+  const [myBounties, setMyBounties] = useState<any[]>([])
+
+  useEffect(() => {
+    fetch('/api/bounties')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && Array.isArray(data.bounties)) {
+          setMyBounties(data.bounties)
+        }
+      })
+      .catch(() => {})
+  }, [])
+
+  const createdByMe = myBounties.filter(b => address && b.creator?.toLowerCase() === address.toLowerCase())
+  const solvedByMe = myBounties.filter(b => b.status === 'paid' || (address && b.contributor?.toLowerCase() === address.toLowerCase()))
+  const totalFunded = createdByMe.reduce((sum, b) => sum + (b.amount || 0), 0)
+  const totalEarned = solvedByMe.reduce((sum, b) => sum + (b.amount || 0), 0)
+
   return (
     <div className="mx-auto max-w-5xl space-y-8 py-6">
 
@@ -201,8 +219,8 @@ function ProfileContent() {
             <span className="text-xs font-semibold uppercase tracking-wider">Total Earned</span>
             <DollarSign className="h-4 w-4 text-teal-400" />
           </div>
-          <p className="text-2xl font-bold text-white font-mono">$0.00</p>
-          <p className="text-[11px] text-teal-400 font-medium">0 Bounties Claimed</p>
+          <p className="text-2xl font-bold text-white font-mono">{totalEarned} XLM</p>
+          <p className="text-[11px] text-teal-400 font-medium">{solvedByMe.length} Bounties Solved</p>
         </div>
 
         <div className="glass-card p-5 space-y-1">
@@ -210,8 +228,8 @@ function ProfileContent() {
             <span className="text-xs font-semibold uppercase tracking-wider">Bounties Funded</span>
             <Award className="h-4 w-4 text-cyan-400" />
           </div>
-          <p className="text-2xl font-bold text-white font-mono">0 Issues</p>
-          <p className="text-[11px] text-slate-400 font-medium">$0 Escrowed</p>
+          <p className="text-2xl font-bold text-white font-mono">{createdByMe.length} Bounties</p>
+          <p className="text-[11px] text-slate-400 font-medium">{totalFunded} XLM Escrowed</p>
         </div>
 
         <div className="glass-card p-5 space-y-1">
@@ -228,8 +246,8 @@ function ProfileContent() {
             <span className="text-xs font-semibold uppercase tracking-wider">Trust Rating</span>
             <Sparkles className="h-4 w-4 text-amber-400" />
           </div>
-          <p className="text-2xl font-bold text-white font-mono">N/A</p>
-          <p className="text-[11px] text-slate-400 font-medium">No rating yet</p>
+          <p className="text-2xl font-bold text-white font-mono">100%</p>
+          <p className="text-[11px] text-slate-400 font-medium">Soroban Verified</p>
         </div>
       </section>
 

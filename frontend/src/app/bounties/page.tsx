@@ -99,11 +99,32 @@ export default function BountiesPage() {
           </p>
         </div>
 
-        <Link href="/bounties/create">
-          <Button className="py-2.5 px-5 text-xs font-bold shrink-0 shadow-lg shadow-teal-500/20">
-            <Plus className="w-4 h-4 mr-1.5" /> Create New Bounty
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          {bounties.length > 0 && (
+            <Button
+              onClick={async () => {
+                if (!confirm('Clear all test bounties from the global database and local storage?')) return
+                try {
+                  await fetch('/api/bounties', { method: 'DELETE' })
+                  window.localStorage.removeItem('codebounty.user-bounties')
+                  setBounties([])
+                } catch (e) {
+                  alert('Failed to clear bounties')
+                }
+              }}
+              variant="outline"
+              className="py-2.5 px-3 text-xs font-semibold border-rose-500/30 text-rose-300 hover:bg-rose-500/10"
+            >
+              Clear Test Bounties
+            </Button>
+          )}
+
+          <Link href="/bounties/create">
+            <Button className="py-2.5 px-5 text-xs font-bold shrink-0 shadow-lg shadow-teal-500/20">
+              <Plus className="w-4 h-4 mr-1.5" /> Create New Bounty
+            </Button>
+          </Link>
+        </div>
       </header>
 
       <FilterBar

@@ -64,3 +64,13 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+
+export async function DELETE() {
+  const { clearAllBountiesDb } = await import('@/lib/db')
+  await clearAllBountiesDb()
+  BOUNTIES_STORE.length = 0
+  return NextResponse.json({
+    success: true,
+    message: 'All test bounties cleared successfully',
+  })
+}

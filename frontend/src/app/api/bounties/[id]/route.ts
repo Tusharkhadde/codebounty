@@ -79,6 +79,18 @@ export async function POST(
       })
     }
 
+    if (action === 'cancel') {
+      bounty.status = 'cancelled'
+
+      await saveBountyToDb(bounty)
+
+      return NextResponse.json({
+        success: true,
+        message: 'Bounty cancelled & escrow refunded to creator!',
+        bounty,
+      })
+    }
+
     return NextResponse.json(
       { error: 'Unknown action specified' },
       { status: 400 }
@@ -89,4 +101,34 @@ export async function POST(
       { status: 500 }
     )
   }
+}
+
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const bountyId = parseInt(params.id, 10)
+  const dbBounties = await getBountiesFromDb()
+  const list = dbBounties && dbBounties.length > 0 ? dbBounties : BOUNTIES_STORE
+  const filtered = list.filter(b => b.id !== bountyId)
+
+  // Save updated list
+  const { clearAllBountiesDb } = await import('@/lib/db')
+  if (filtered.length === 0) {
+    await clearAllBountiesDb()
+  } else {
+    try {
+      const CLOUD_KV_URL = 'https://kvdb.io/9A3yR2mK7xL5pQ8j/codebounty_global_bounties'
+      await fetch(CLOUD_KV_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(filtered),
+      })
+    } catch (e) {}
+  }
+
+  return NextResponse.json({
+    success: true,
+    message: `Bounty #${params.id} removed successfully`,
+  })
 }

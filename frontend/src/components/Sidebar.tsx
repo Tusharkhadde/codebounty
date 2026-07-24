@@ -65,18 +65,17 @@ export function Sidebar() {
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton
                       isActive={active}
+                      onClick={() => router.push(item.url)}
                       className={
                         item.highlight
-                          ? "text-teal-300 hover:text-white bg-teal-500/10 hover:bg-teal-500/20 border border-teal-500/20 font-semibold"
+                          ? "text-teal-300 hover:text-white bg-teal-500/10 hover:bg-teal-500/20 border border-teal-500/20 font-semibold cursor-pointer w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm"
                           : active
-                          ? "bg-teal-400/10 text-teal-300 font-semibold border border-teal-300/20"
-                          : "text-gray-400 hover:text-white hover:bg-white/5"
+                          ? "bg-teal-400/10 text-teal-300 font-semibold border border-teal-300/20 cursor-pointer w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm"
+                          : "text-gray-400 hover:text-white hover:bg-white/5 cursor-pointer w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm"
                       }
                     >
-                      <Link href={item.url} className="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm">
-                        <Icon className="w-4 h-4 shrink-0" />
-                        <span>{item.title}</span>
-                      </Link>
+                      <Icon className="w-4 h-4 shrink-0 text-teal-400" />
+                      <span className="font-medium">{item.title}</span>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
                 )

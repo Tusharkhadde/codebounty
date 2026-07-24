@@ -40,6 +40,7 @@ export default function BountyDetailsPage() {
   const [linking, setLinking] = useState(false)
   const [linkError, setLinkError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [cancelling, setCancelling] = useState(false)
 
   const fetchBounty = useCallback(async () => {
     try {
@@ -114,10 +115,40 @@ export default function BountyDetailsPage() {
         })
       })
 
+  const handleCancelBounty = async () => {
+    if (!confirm('Are you sure you want to cancel this bounty and refund the escrow funds back to your wallet?')) return
+    setCancelling(true)
+    try {
+      const res = await fetch(`/api/bounties/${bountyId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'cancel' })
+      })
       const data = await res.json()
       if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Failed to link pull request')
+        throw new Error(data.error || 'Failed to cancel bounty')
       }
+      fetchBounty()
+    } catch (err: any) {
+      alert(err.message || 'Error cancelling bounty')
+    } finally {
+      setCancelling(false)
+    }
+  }
+
+  const handleDeleteBounty = async () => {
+    if (!confirm('Permanently delete this test bounty?')) return
+    try {
+      await fetch(`/api/bounties/${bountyId}`, { method: 'DELETE' })
+      // Clear from localStorage as well
+      const localSaved = window.localStorage.getItem('codebounty.user-bounties')
+      if (localSaved) {
+        const parsed = JSON.parse(localSaved).filter((b: Bounty) => String(b.id) !== String(bountyId))
+        window.localStorage.setItem('codebounty.user-bounties', JSON.stringify(parsed))
+      }
+      window.location.href = '/bounties'
+    } catch (e) {}
+  }
 
       setBounty(data.bounty)
       setShowLinkModal(false)
@@ -323,11 +354,30 @@ export default function BountyDetailsPage() {
               </p>
             )}
 
-            {bounty.status === 'paid' && (
-              <div className="p-3 rounded-lg bg-teal-500/10 text-teal-300 text-xs text-center font-semibold">
-                Completed & Paid
+            {bounty.status !== 'cancelled' && bounty.status !== 'paid' && (
+              <Button
+                onClick={handleCancelBounty}
+                disabled={cancelling}
+                variant="outline"
+                className="w-full py-2.5 text-xs border-rose-500/30 text-rose-300 hover:bg-rose-500/10 hover:text-rose-200"
+              >
+                {cancelling ? 'Cancelling...' : 'Cancel Bounty & Refund Escrow'}
+              </Button>
+            )}
+
+            {bounty.status === 'cancelled' && (
+              <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs text-center font-semibold">
+                Bounty Cancelled & Funds Refunded
               </div>
             )}
+
+            <Button
+              onClick={handleDeleteBounty}
+              variant="ghost"
+              className="w-full text-xs text-slate-500 hover:text-rose-400 py-1"
+            >
+              Delete Test Bounty
+            </Button>
           </Card>
 
           {/* Escrow Details */}

@@ -4,6 +4,39 @@ import type { Bounty } from '@/types'
 
 const CLOUD_KV_URL = 'https://kvdb.io/9A3yR2mK7xL5pQ8j/codebounty_global_bounties'
 
+export async function clearAllBountiesDb(): Promise<boolean> {
+  try {
+    await fetch(CLOUD_KV_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify([]),
+    })
+  } catch (err) {
+    console.error('Failed to clear Cloud KV:', err)
+  }
+
+  const sql = getSql()
+  if (sql) {
+    try {
+      await initDb()
+      await sql`TRUNCATE TABLE bounties;`
+    } catch (err) {
+      console.error('Failed to truncate Neon DB:', err)
+    }
+  }
+
+  const prisma = getPrisma()
+  if (prisma) {
+    try {
+      await prisma.bounty.deleteMany({})
+    } catch (err) {
+      console.error('Failed to clear Prisma bounties:', err)
+    }
+  }
+
+  return true
+}
+
 export function getSql() {
   const connectionString =
     process.env.DATABASE_URL ||
