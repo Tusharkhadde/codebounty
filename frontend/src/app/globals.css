@@ -36,6 +36,34 @@
 
     --background: var(--surface-void);
     --foreground: var(--color-bone);
+
+    --card: var(--surface-card);
+    --card-foreground: var(--color-bone);
+    --popover: var(--surface-floating);
+    --popover-foreground: var(--color-bone);
+    --primary: var(--color-paper-white);
+    --primary-foreground: var(--color-obsidian);
+    --secondary: var(--color-graphite);
+    --secondary-foreground: var(--color-bone);
+    --muted: var(--color-smoke);
+    --muted-foreground: var(--color-fog);
+    --accent: var(--color-slate);
+    --accent-foreground: var(--color-paper-white);
+    --destructive: #ef4444;
+    --destructive-foreground: #ffffff;
+    --border: var(--color-graphite);
+    --input: var(--color-slate);
+    --ring: var(--color-steel);
+    --radius: 0.625rem;
+
+    --sidebar-background: var(--surface-card);
+    --sidebar-foreground: var(--color-bone);
+    --sidebar-primary: var(--color-paper-white);
+    --sidebar-primary-foreground: var(--color-obsidian);
+    --sidebar-accent: var(--color-graphite);
+    --sidebar-accent-foreground: var(--color-paper-white);
+    --sidebar-border: var(--color-slate);
+    --sidebar-ring: var(--color-steel);
   }
 
   body {

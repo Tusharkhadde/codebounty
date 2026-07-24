@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { BOUNTIES_STORE } from '@/lib/bounties-store'
+import { getBountiesFromDb, saveBountyToDb } from '@/lib/db'
 
 export async function GET(
   _request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   const bountyId = parseInt(params.id, 10)
-  const bounty = BOUNTIES_STORE.find(b => b.id === bountyId)
+  
+  const dbBounties = await getBountiesFromDb()
+  const list = dbBounties && dbBounties.length > 0 ? dbBounties : BOUNTIES_STORE
+  const bounty = list.find(b => b.id === bountyId)
 
   if (!bounty) {
     return NextResponse.json(
@@ -27,7 +31,9 @@ export async function POST(
 ) {
   try {
     const bountyId = parseInt(params.id, 10)
-    const bounty = BOUNTIES_STORE.find(b => b.id === bountyId)
+    const dbBounties = await getBountiesFromDb()
+    const list = dbBounties && dbBounties.length > 0 ? dbBounties : BOUNTIES_STORE
+    const bounty = list.find(b => b.id === bountyId)
 
     if (!bounty) {
       return NextResponse.json(
@@ -51,6 +57,8 @@ export async function POST(
       bounty.contributor = contributor || 'GCONTRIBUTOR99999999999999999999999999999999999'
       bounty.status = 'linked'
 
+      await saveBountyToDb(bounty)
+
       return NextResponse.json({
         success: true,
         message: 'Pull Request linked to bounty escrow!',
@@ -61,6 +69,8 @@ export async function POST(
     if (action === 'pay') {
       bounty.status = 'paid'
       bounty.paid_at = Math.floor(Date.now() / 1000)
+
+      await saveBountyToDb(bounty)
 
       return NextResponse.json({
         success: true,

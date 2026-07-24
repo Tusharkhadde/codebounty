@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import type { Bounty } from '@/types'
 import { BOUNTIES_STORE } from '@/lib/bounties-store'
+import { getBountiesFromDb, saveBountyToDb } from '@/lib/db'
 
 export async function GET() {
+  const dbBounties = await getBountiesFromDb()
+  const list = dbBounties && dbBounties.length > 0 ? dbBounties : BOUNTIES_STORE
+
   return NextResponse.json({
     success: true,
-    bounties: BOUNTIES_STORE,
+    bounties: list,
   })
 }
 
@@ -43,6 +47,10 @@ export async function POST(request: NextRequest) {
       paid_at: 0,
     }
 
+    // Persist to Neon DB if connected
+    await saveBountyToDb(newBounty)
+
+    // Also update in-memory fallback
     BOUNTIES_STORE.unshift(newBounty)
 
     return NextResponse.json({

@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 import { WalletProvider } from '@/contexts/WalletContext'
 import { Sidebar } from '@/components/Sidebar'
+import { SidebarProvider } from '@/components/ui/sidebar'
 
 export const metadata: Metadata = {
   title: 'CodeBounty - GitHub Bug Bounty Escrow on Stellar',
@@ -24,23 +25,23 @@ export default function RootLayout({
     <html lang="en" className="scroll-smooth">
       <body className="min-h-screen">
         <WalletProvider>
-          <div className="relative min-h-screen flex">
-            {/* Background Effects from globals.css */}
-            
-            {/* Sidebar */}
-            <Sidebar />
-            
-            {/* Main Content Area */}
-            <div className="flex-1 flex flex-col min-w-0 min-h-screen">
-              {/* Main Content */}
-              <main className="relative z-10 flex-1 container-main py-8">
-                {children}
-              </main>
+          <SidebarProvider defaultOpen={true}>
+            <div className="relative min-h-screen flex w-full">
+              {/* Shadcn UI Sidebar */}
+              <Sidebar />
               
-              {/* Footer */}
-              <Footer />
+              {/* Main Content Area */}
+              <div className="flex-1 flex flex-col min-w-0 min-h-screen">
+                {/* Main Content */}
+                <main className="relative z-10 flex-1 container-main py-8">
+                  {children}
+                </main>
+                
+                {/* Footer */}
+                <Footer />
+              </div>
             </div>
-          </div>
+          </SidebarProvider>
         </WalletProvider>
       </body>
     </html>
@@ -92,7 +93,7 @@ function Footer() {
             <ul className="space-y-2.5">
               <li><a href="/" className="text-gray-400 hover:text-white text-sm transition-colors inline-flex items-center gap-2 group">Dashboard<span className="group-hover:translate-x-1 transition-transform">→</span></a></li>
               <li><a href="/bounties" className="text-gray-400 hover:text-white text-sm transition-colors inline-flex items-center gap-2 group">Browse Bounties<span className="group-hover:translate-x-1 transition-transform">→</span></a></li>
-              <li><a href="/create" className="text-gray-400 hover:text-white text-sm transition-colors inline-flex items-center gap-2 group">Create Bounty<span className="group-hover:translate-x-1 transition-transform">→</span></a></li>
+              <li><a href="/bounties/create" className="text-gray-400 hover:text-white text-sm transition-colors inline-flex items-center gap-2 group">Create Bounty<span className="group-hover:translate-x-1 transition-transform">→</span></a></li>
             </ul>
           </div>
           
