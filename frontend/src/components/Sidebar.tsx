@@ -37,7 +37,7 @@ export function Sidebar() {
   ]
 
   return (
-    <ShadcnSidebar className="border-r border-white/10 bg-[#06080d]/95 backdrop-blur-xl text-[#e2e3e9]">
+    <ShadcnSidebar collapsible="none" className="w-64 h-screen sticky top-0 shrink-0 border-r border-white/10 bg-[#06080d]/95 backdrop-blur-xl text-[#e2e3e9]">
       {/* Brand Header */}
       <SidebarHeader className="h-16 flex items-center px-6 border-b border-white/10 shrink-0">
         <Link href="/" className="flex items-center gap-2.5 group">
