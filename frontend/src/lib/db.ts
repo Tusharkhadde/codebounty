@@ -2,7 +2,12 @@ import { neon } from '@neondatabase/serverless'
 import type { Bounty } from '@/types'
 
 export function getSql() {
-  const connectionString = process.env.DATABASE_URL || process.env.NEON_DATABASE_URL
+  const connectionString =
+    process.env.DATABASE_URL ||
+    process.env.NEON_DATABASE_URL ||
+    process.env.POSTGRES_URL ||
+    process.env.NEONDB_URL ||
+    process.env.NEON_URL
   if (!connectionString) {
     return null
   }
