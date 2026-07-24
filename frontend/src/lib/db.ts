@@ -1,6 +1,8 @@
 import { neon } from '@neondatabase/serverless'
 import type { Bounty } from '@/types'
 
+const CLOUD_KV_URL = 'https://kvdb.io/9A3yR2mK7xL5pQ8j/codebounty_global_bounties'
+
 export function getSql() {
   const connectionString =
     process.env.DATABASE_URL ||
@@ -46,51 +48,99 @@ export async function initDb() {
 }
 
 export async function getBountiesFromDb(): Promise<Bounty[] | null> {
+  // 1. Try Neon DB if DATABASE_URL connection string is configured
   const sql = getSql()
-  if (!sql) return null
-  try {
-    await initDb()
-    const rows = await sql`
-      SELECT id, issue_url, creator, amount, token, deadline, status, linked_pr_url, contributor, funded_at, paid_at 
-      FROM bounties 
-      ORDER BY id DESC
-    `
-    return rows.map(r => ({
-      id: Number(r.id),
-      issue_url: String(r.issue_url),
-      creator: String(r.creator),
-      amount: Number(r.amount),
-      token: r.token ? String(r.token) : null,
-      deadline: Number(r.deadline),
-      status: r.status as any,
-      linked_pr_url: r.linked_pr_url ? String(r.linked_pr_url) : null,
-      contributor: r.contributor ? String(r.contributor) : null,
-      funded_at: Number(r.funded_at),
-      paid_at: Number(r.paid_at),
-    }))
-  } catch (err) {
-    console.error('Neon DB query error:', err)
-    return null
+  if (sql) {
+    try {
+      await initDb()
+      const rows = await sql`
+        SELECT id, issue_url, creator, amount, token, deadline, status, linked_pr_url, contributor, funded_at, paid_at 
+        FROM bounties 
+        ORDER BY id DESC
+      `
+      if (rows && rows.length > 0) {
+        return rows.map(r => ({
+          id: Number(r.id),
+          issue_url: String(r.issue_url),
+          creator: String(r.creator),
+          amount: Number(r.amount),
+          token: r.token ? String(r.token) : null,
+          deadline: Number(r.deadline),
+          status: r.status as any,
+          linked_pr_url: r.linked_pr_url ? String(r.linked_pr_url) : null,
+          contributor: r.contributor ? String(r.contributor) : null,
+          funded_at: Number(r.funded_at),
+          paid_at: Number(r.paid_at),
+        }))
+      }
+    } catch (err) {
+      console.error('Neon DB query error:', err)
+    }
   }
+
+  // 2. Cloud serverless persistence fallback so all users/friends see bounties across different devices
+  try {
+    const res = await fetch(CLOUD_KV_URL, { cache: 'no-store' })
+    if (res.ok) {
+      const data = await res.json()
+      if (Array.isArray(data) && data.length > 0) {
+        return data
+      }
+    }
+  } catch (err) {
+    console.error('Cloud KV fetch error:', err)
+  }
+
+  return null
 }
 
 export async function saveBountyToDb(bounty: Bounty): Promise<boolean> {
+  let saved = false
+
+  // 1. Save to Neon DB if configured
   const sql = getSql()
-  if (!sql) return false
-  try {
-    await initDb()
-    await sql`
-      INSERT INTO bounties (id, issue_url, creator, amount, token, deadline, status, linked_pr_url, contributor, funded_at, paid_at)
-      VALUES (${bounty.id}, ${bounty.issue_url}, ${bounty.creator}, ${bounty.amount}, ${bounty.token}, ${bounty.deadline}, ${bounty.status}, ${bounty.linked_pr_url}, ${bounty.contributor}, ${bounty.funded_at}, ${bounty.paid_at})
-      ON CONFLICT (id) DO UPDATE SET
-        status = EXCLUDED.status,
-        linked_pr_url = EXCLUDED.linked_pr_url,
-        contributor = EXCLUDED.contributor,
-        paid_at = EXCLUDED.paid_at;
-    `
-    return true
-  } catch (err) {
-    console.error('Neon DB save error:', err)
-    return false
+  if (sql) {
+    try {
+      await initDb()
+      await sql`
+        INSERT INTO bounties (id, issue_url, creator, amount, token, deadline, status, linked_pr_url, contributor, funded_at, paid_at)
+        VALUES (${bounty.id}, ${bounty.issue_url}, ${bounty.creator}, ${bounty.amount}, ${bounty.token}, ${bounty.deadline}, ${bounty.status}, ${bounty.linked_pr_url}, ${bounty.contributor}, ${bounty.funded_at}, ${bounty.paid_at})
+        ON CONFLICT (id) DO UPDATE SET
+          status = EXCLUDED.status,
+          linked_pr_url = EXCLUDED.linked_pr_url,
+          contributor = EXCLUDED.contributor,
+          paid_at = EXCLUDED.paid_at;
+      `
+      saved = true
+    } catch (err) {
+      console.error('Neon DB save error:', err)
+    }
   }
+
+  // 2. Save to Cloud KV storage so all devices across the web share the exact same global list
+  try {
+    const existing = (await getBountiesFromDb()) || []
+    const map = new Map<number, Bounty>()
+    map.set(bounty.id, bounty)
+    existing.forEach(b => {
+      if (!map.has(b.id)) {
+        map.set(b.id, b)
+      } else {
+        // preserve updated status
+        const curr = map.get(b.id)!
+        map.set(b.id, { ...b, ...curr })
+      }
+    })
+    const updated = Array.from(map.values())
+    await fetch(CLOUD_KV_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updated),
+    })
+    saved = true
+  } catch (err) {
+    console.error('Cloud KV save error:', err)
+  }
+
+  return saved
 }
