@@ -2,17 +2,20 @@ import { neon } from '@neondatabase/serverless'
 import { getPrisma } from '@/lib/prisma'
 import type { Bounty } from '@/types'
 
-const CLOUD_KV_URL = 'https://kvdb.io/9A3yR2mK7xL5pQ8j/codebounty_global_bounties'
+const FALLBACK_POSTGRES_URL =
+  'postgresql://neondb_owner:npg_g0hZ5kM8XyQW@ep-cold-shadow-a5p67q8r.us-east-2.aws.neon.tech/neondb?sslmode=require'
+
+const CLOUD_STORAGE_URL = 'https://api.npoint.io/c6a74b1e5239e248b11c'
 
 export async function clearAllBountiesDb(): Promise<boolean> {
   try {
-    await fetch(CLOUD_KV_URL, {
+    await fetch(CLOUD_STORAGE_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify([]),
     })
   } catch (err) {
-    console.error('Failed to clear Cloud KV:', err)
+    console.error('Failed to clear Cloud Storage:', err)
   }
 
   const sql = getSql()
@@ -43,11 +46,14 @@ export function getSql() {
     process.env.NEON_DATABASE_URL ||
     process.env.POSTGRES_URL ||
     process.env.NEONDB_URL ||
-    process.env.NEON_URL
-  if (!connectionString) {
+    process.env.NEON_URL ||
+    FALLBACK_POSTGRES_URL
+
+  try {
+    return neon(connectionString)
+  } catch (e) {
     return null
   }
-  return neon(connectionString)
 }
 
 let tableInitialized = false
@@ -82,7 +88,9 @@ export async function initDb() {
 }
 
 export async function getBountiesFromDb(): Promise<Bounty[] | null> {
-  // 1. Try Prisma ORM first if configured
+  const allBountiesMap = new Map<number, Bounty>()
+
+  // 1. Try Prisma ORM if DATABASE_URL environment variable is set
   const prisma = getPrisma()
   if (prisma) {
     try {
@@ -90,19 +98,21 @@ export async function getBountiesFromDb(): Promise<Bounty[] | null> {
         orderBy: { id: 'desc' },
       })
       if (rows && rows.length > 0) {
-        return rows.map((r: any) => ({
-          id: Number(r.id),
-          issue_url: String(r.issueUrl),
-          creator: String(r.creator),
-          amount: Number(r.amount),
-          token: r.token ? String(r.token) : null,
-          deadline: Number(r.deadline),
-          status: r.status as any,
-          linked_pr_url: r.linkedPrUrl ? String(r.linkedPrUrl) : null,
-          contributor: r.contributor ? String(r.contributor) : null,
-          funded_at: Number(r.fundedAt),
-          paid_at: Number(r.paidAt),
-        }))
+        rows.forEach((r: any) => {
+          allBountiesMap.set(r.id, {
+            id: Number(r.id),
+            issue_url: String(r.issueUrl),
+            creator: String(r.creator),
+            amount: Number(r.amount),
+            token: r.token ? String(r.token) : null,
+            deadline: Number(r.deadline),
+            status: r.status as any,
+            linked_pr_url: r.linkedPrUrl ? String(r.linkedPrUrl) : null,
+            contributor: r.contributor ? String(r.contributor) : null,
+            funded_at: Number(r.fundedAt),
+            paid_at: Number(r.paidAt),
+          })
+        })
       }
     } catch (err) {
       console.error('Prisma query error:', err)
@@ -120,45 +130,52 @@ export async function getBountiesFromDb(): Promise<Bounty[] | null> {
         ORDER BY id DESC
       `
       if (rows && rows.length > 0) {
-        return rows.map((r: any) => ({
-          id: Number(r.id),
-          issue_url: String(r.issue_url),
-          creator: String(r.creator),
-          amount: Number(r.amount),
-          token: r.token ? String(r.token) : null,
-          deadline: Number(r.deadline),
-          status: r.status as any,
-          linked_pr_url: r.linked_pr_url ? String(r.linked_pr_url) : null,
-          contributor: r.contributor ? String(r.contributor) : null,
-          funded_at: Number(r.funded_at),
-          paid_at: Number(r.paid_at),
-        }))
+        rows.forEach((r: any) => {
+          allBountiesMap.set(Number(r.id), {
+            id: Number(r.id),
+            issue_url: String(r.issue_url),
+            creator: String(r.creator),
+            amount: Number(r.amount),
+            token: r.token ? String(r.token) : null,
+            deadline: Number(r.deadline),
+            status: r.status as any,
+            linked_pr_url: r.linked_pr_url ? String(r.linked_pr_url) : null,
+            contributor: r.contributor ? String(r.contributor) : null,
+            funded_at: Number(r.funded_at),
+            paid_at: Number(r.paid_at),
+          })
+        })
       }
     } catch (err) {
       console.error('Neon DB query error:', err)
     }
   }
 
-  // 3. Cloud serverless persistence fallback so all users/friends see bounties across different devices
+  // 3. Try Cloud Storage JSON fallback
   try {
-    const res = await fetch(CLOUD_KV_URL, { cache: 'no-store' })
+    const res = await fetch(CLOUD_STORAGE_URL, { cache: 'no-store' })
     if (res.ok) {
       const data = await res.json()
       if (Array.isArray(data) && data.length > 0) {
-        return data
+        data.forEach((b: Bounty) => {
+          if (!allBountiesMap.has(b.id)) {
+            allBountiesMap.set(b.id, b)
+          }
+        })
       }
     }
   } catch (err) {
-    console.error('Cloud KV fetch error:', err)
+    console.error('Cloud Storage fetch error:', err)
   }
 
-  return null
+  const result = Array.from(allBountiesMap.values())
+  return result.length > 0 ? result : null
 }
 
 export async function saveBountyToDb(bounty: Bounty): Promise<boolean> {
   let saved = false
 
-  // 1. Save with Prisma ORM if configured
+  // 1. Save with Prisma ORM if DATABASE_URL is set
   const prisma = getPrisma()
   if (prisma) {
     try {
@@ -190,7 +207,7 @@ export async function saveBountyToDb(bounty: Bounty): Promise<boolean> {
     }
   }
 
-  // 2. Save with Neon SQL driver if DATABASE_URL / NEON_DATABASE_URL is set
+  // 2. Save with Neon SQL driver
   const sql = getSql()
   if (sql) {
     try {
@@ -210,7 +227,7 @@ export async function saveBountyToDb(bounty: Bounty): Promise<boolean> {
     }
   }
 
-  // 3. Save to Cloud KV storage so all devices across the web share the exact same global list
+  // 3. Save to Cloud JSON storage so all devices across the web share the exact same global list
   try {
     const existing = (await getBountiesFromDb()) || []
     const map = new Map<number, Bounty>()
@@ -224,14 +241,14 @@ export async function saveBountyToDb(bounty: Bounty): Promise<boolean> {
       }
     })
     const updated = Array.from(map.values())
-    await fetch(CLOUD_KV_URL, {
+    await fetch(CLOUD_STORAGE_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updated),
     })
     saved = true
   } catch (err) {
-    console.error('Cloud KV save error:', err)
+    console.error('Cloud storage save error:', err)
   }
 
   return saved

@@ -4,12 +4,16 @@ import { BOUNTIES_STORE } from '@/lib/bounties-store'
 import { getBountiesFromDb, saveBountyToDb } from '@/lib/db'
 
 export async function GET() {
-  const dbBounties = await getBountiesFromDb()
-  const list = dbBounties && dbBounties.length > 0 ? dbBounties : BOUNTIES_STORE
+  const dbBounties = (await getBountiesFromDb()) || []
+  const map = new Map<number, Bounty>()
+  dbBounties.forEach(b => map.set(b.id, b))
+  BOUNTIES_STORE.forEach(b => {
+    if (!map.has(b.id)) map.set(b.id, b)
+  })
 
   return NextResponse.json({
     success: true,
-    bounties: list,
+    bounties: Array.from(map.values()),
   })
 }
 
