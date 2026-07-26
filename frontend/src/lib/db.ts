@@ -2,13 +2,13 @@ import { neon } from '@neondatabase/serverless'
 import { getPrisma } from '@/lib/prisma'
 import type { Bounty } from '@/types'
 
-const CLOUD_STORAGE_URL = 'https://api.npoint.io/c6a74b1e5239e248b11c'
+const CLOUD_STORAGE_URL = 'https://jsonblob.com/api/jsonBlob/019f9dec-7b39-729e-97df-467a210d2252'
 
 export async function clearAllBountiesDb(): Promise<boolean> {
   try {
     await fetch(CLOUD_STORAGE_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
       body: JSON.stringify([]),
     })
   } catch (err) {
@@ -240,8 +240,8 @@ export async function saveBountyToDb(bounty: Bounty): Promise<boolean> {
     })
     const updated = Array.from(map.values())
     await fetch(CLOUD_STORAGE_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
       body: JSON.stringify(updated),
     })
     saved = true
