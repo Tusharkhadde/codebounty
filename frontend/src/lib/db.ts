@@ -2,18 +2,16 @@ import { neon } from '@neondatabase/serverless'
 import { getPrisma } from '@/lib/prisma'
 import type { Bounty } from '@/types'
 
-const CLOUD_STORAGE_URL = 'https://jsonblob.com/api/jsonBlob/019f9dec-7b39-729e-97df-467a210d2252'
+const CLOUD_STORAGE_URL = process.env.CLOUDBOUNTY_STORAGE_URL || ''
 
 export async function clearAllBountiesDb(): Promise<boolean> {
-  try {
+  if (CLOUD_STORAGE_URL) try {
     await fetch(CLOUD_STORAGE_URL, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
       body: JSON.stringify([]),
     })
-  } catch (err) {
-    console.error('Failed to clear Cloud Storage:', err)
-  }
+  } catch { /* Optional storage is unavailable; local/database stores continue. */ }
 
   const sql = getSql()
   if (sql) {
@@ -47,7 +45,7 @@ export function getSql() {
 
   if (!connectionString) return null
 
-  try {
+  if (CLOUD_STORAGE_URL) try {
     return neon(connectionString)
   } catch (e) {
     return null
@@ -162,9 +160,7 @@ export async function getBountiesFromDb(): Promise<Bounty[] | null> {
         })
       }
     }
-  } catch (err) {
-    console.error('Cloud Storage fetch error:', err)
-  }
+  } catch { /* Optional storage is unavailable; in-memory/database stores continue. */ }
 
   const result = Array.from(allBountiesMap.values())
   return result.length > 0 ? result : null

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { SearchX, Plus, Sparkles } from 'lucide-react'
+import { SearchX, Plus } from 'lucide-react'
 import { BountyCard } from '@/components/BountyCard'
 import { FilterBar } from '@/components/FilterBar'
 import { EmptyState } from '@/components/EmptyState'
@@ -100,18 +100,12 @@ export default function BountiesPage() {
   )
 
   return (
-    <div className="container-main py-10 space-y-8">
+    <div className="space-y-8">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <h1 className="heading-lg">Bounties</h1>
-            <span className="px-2.5 py-0.5 rounded-full bg-teal-500/10 border border-teal-500/20 text-teal-300 text-xs font-semibold flex items-center gap-1">
-              <Sparkles className="w-3 h-3" /> Soroban Escrows
-            </span>
-          </div>
-          <p className="text-gray-400 max-w-2xl text-xs md:text-sm">
-            Browse trustless bounties funded on Stellar. Each bounty locks funds in
-            a Soroban escrow and releases them when the linked pull request merges.
+          <h1 className="heading-lg">Bounties</h1>
+          <p className="mt-2 max-w-2xl text-sm text-zinc-400">
+            Browse work that needs attention. Filter by reward, deadline, or progress.
           </p>
         </div>
 
@@ -129,14 +123,14 @@ export default function BountiesPage() {
                 }
               }}
               variant="outline"
-              className="py-2.5 px-3 text-xs font-semibold border-rose-500/30 text-rose-300 hover:bg-rose-500/10"
+              className="py-2.5 px-3 text-xs font-semibold"
             >
               Clear Test Bounties
             </Button>
           )}
 
           <Link href="/bounties/create">
-            <Button className="py-2.5 px-5 text-xs font-bold shrink-0 shadow-lg shadow-teal-500/20">
+            <Button className="py-2.5 px-5 text-xs font-bold shrink-0">
               <Plus className="w-4 h-4 mr-1.5" /> Create New Bounty
             </Button>
           </Link>
@@ -157,8 +151,8 @@ export default function BountiesPage() {
       />
 
       {loading ? (
-        <div className="py-16 text-center text-xs text-slate-400">
-          <div className="w-8 h-8 border-2 border-teal-400 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <div className="py-16 text-center text-xs text-zinc-400">
+          <div className="w-8 h-8 border-2 border-zinc-400 border-t-transparent rounded-full animate-spin mx-auto mb-3" />
           Loading active bounties...
         </div>
       ) : filtered.length === 0 ? (

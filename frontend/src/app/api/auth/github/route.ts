@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 
 const sessionName = 'codebounty_session'
 const stateName = 'codebounty_oauth_state'
+const returnName = 'codebounty_oauth_return'
 const appUrl = () => process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 const sign = (value: string) => createHmac('sha256', process.env.AUTH_SECRET || '').update(value).digest('base64url')
 
@@ -17,6 +18,9 @@ export async function GET(request: NextRequest) {
     url.searchParams.set('client_id', clientId); url.searchParams.set('redirect_uri', `${appUrl()}/api/auth/github`); url.searchParams.set('scope', 'read:user user:email'); url.searchParams.set('state', state)
     const response = NextResponse.redirect(url)
     response.cookies.set(stateName, state, { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', maxAge: 600, path: '/' })
+    const next = request.nextUrl.searchParams.get('next') || '/profile'
+    const safeNext = next.startsWith('/') && !next.startsWith('//') ? next : '/profile'
+    response.cookies.set(returnName, safeNext, { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', maxAge: 600, path: '/' })
     return response
   }
   const state = request.nextUrl.searchParams.get('state') || ''
@@ -26,8 +30,10 @@ export async function GET(request: NextRequest) {
   if (!token.access_token) return NextResponse.redirect(new URL('/login?error=github-auth-failed', appUrl()))
   const user = await fetch('https://api.github.com/user', { headers: { Authorization: `Bearer ${token.access_token}`, Accept: 'application/vnd.github+json' } }).then(r => r.json())
   const payload = Buffer.from(JSON.stringify({ login: user.login, avatarUrl: user.avatar_url })).toString('base64url')
-  const response = NextResponse.redirect(new URL('/profile', appUrl()))
+  const returnTo = cookies().get(returnName)?.value || '/profile'
+  const response = NextResponse.redirect(new URL(returnTo.startsWith('/') ? returnTo : '/profile', appUrl()))
   response.cookies.set(sessionName, `${payload}.${sign(payload)}`, { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', maxAge: 60 * 60 * 24 * 7, path: '/' })
   response.cookies.delete(stateName)
+  response.cookies.delete(returnName)
   return response
 }
