@@ -22,21 +22,40 @@ export default function BountiesPage() {
   useEffect(() => {
     fetch('/api/bounties')
       .then(res => res.json())
-      .then(data => {
+      .then(async data => {
         let serverBounties: Bounty[] = []
         if (data.success && Array.isArray(data.bounties)) {
           serverBounties = data.bounties
         }
-        // Load user-created bounties from localStorage
+        // Auto-sync any local bounties created before the database deployment
         try {
           const localSaved = window.localStorage.getItem('codebounty.user-bounties')
           if (localSaved) {
             const userBounties: Bounty[] = JSON.parse(localSaved)
-            // Merge and deduplicate by ID
+            const serverIds = new Set(serverBounties.map(b => b.id))
             const map = new Map<number, Bounty>()
             userBounties.forEach(b => map.set(b.id, b))
             serverBounties.forEach(b => map.set(b.id, b))
-            setBounties(Array.from(map.values()))
+            const merged = Array.from(map.values())
+            
+            // Push missing local bounties to cloud DB so friends can see them
+            for (const localB of userBounties) {
+              if (!serverIds.has(localB.id)) {
+                fetch('/api/bounties', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    issueUrl: localB.issue_url,
+                    amount: String(localB.amount),
+                    token: localB.token || 'XLM',
+                    deadline: String(localB.deadline),
+                    creator: localB.creator,
+                  }),
+                }).catch(() => {})
+              }
+            }
+
+            setBounties(merged)
             return
           }
         } catch (e) {
@@ -45,15 +64,12 @@ export default function BountiesPage() {
         setBounties(serverBounties)
       })
       .catch(() => {
-        // Fallback to localStorage if API fails
         try {
           const localSaved = window.localStorage.getItem('codebounty.user-bounties')
           if (localSaved) {
             setBounties(JSON.parse(localSaved))
           }
-        } catch (e) {
-          // ignore
-        }
+        } catch (e) {}
       })
       .finally(() => setLoading(false))
   }, [])
