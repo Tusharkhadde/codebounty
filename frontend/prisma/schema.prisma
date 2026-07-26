@@ -10,6 +10,8 @@ model Bounty {
   id          Int      @id
   issueUrl    String   @map("issue_url")
   creator     String
+  ownerGithubLogin String? @map("owner_github_login")
+  ownerWalletAddress String? @map("owner_wallet_address")
   amount      Float
   token       String?  @default("XLM")
   deadline    BigInt
@@ -21,4 +23,19 @@ model Bounty {
   createdAt   DateTime @default(now()) @map("created_at")
 
   @@map("bounties")
+}
+
+model AuditLog {
+  id          String   @id @default(cuid())
+  bountyId    Int      @map("bounty_id")
+  githubLogin String   @map("github_login")
+  walletAddress String? @map("wallet_address")
+  action      String
+  previousState String? @map("previous_state")
+  newState    String? @map("new_state")
+  transactionHash String? @map("transaction_hash")
+  ipAddress   String?  @map("ip_address")
+  createdAt   DateTime @default(now()) @map("created_at")
+  @@index([bountyId])
+  @@map("audit_logs")
 }

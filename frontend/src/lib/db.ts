@@ -45,7 +45,7 @@ export function getSql() {
 
   if (!connectionString) return null
 
-  if (CLOUD_STORAGE_URL) try {
+  try {
     return neon(connectionString)
   } catch (e) {
     return null
@@ -58,7 +58,7 @@ export async function initDb() {
   if (tableInitialized) return true
   const sql = getSql()
   if (!sql) return false
-  try {
+  if (CLOUD_STORAGE_URL) try {
     await sql`
       CREATE TABLE IF NOT EXISTS bounties (
         id INT PRIMARY KEY,
@@ -107,6 +107,8 @@ export async function getBountiesFromDb(): Promise<Bounty[] | null> {
             contributor: r.contributor ? String(r.contributor) : null,
             funded_at: Number(r.fundedAt),
             paid_at: Number(r.paidAt),
+            owner_github_login: r.ownerGithubLogin,
+            owner_wallet_address: r.ownerWalletAddress,
           })
         })
       }
@@ -148,7 +150,7 @@ export async function getBountiesFromDb(): Promise<Bounty[] | null> {
   }
 
   // 3. Try Cloud Storage JSON fallback
-  try {
+  if (CLOUD_STORAGE_URL) try {
     const res = await fetch(CLOUD_STORAGE_URL, { cache: 'no-store' })
     if (res.ok) {
       const data = await res.json()
@@ -180,6 +182,8 @@ export async function saveBountyToDb(bounty: Bounty): Promise<boolean> {
           linkedPrUrl: bounty.linked_pr_url,
           contributor: bounty.contributor,
           paidAt: BigInt(bounty.paid_at || 0),
+          ownerGithubLogin: bounty.owner_github_login,
+          ownerWalletAddress: bounty.owner_wallet_address,
         },
         create: {
           id: bounty.id,
@@ -193,6 +197,8 @@ export async function saveBountyToDb(bounty: Bounty): Promise<boolean> {
           contributor: bounty.contributor,
           fundedAt: BigInt(bounty.funded_at),
           paidAt: BigInt(bounty.paid_at || 0),
+          ownerGithubLogin: bounty.owner_github_login,
+          ownerWalletAddress: bounty.owner_wallet_address,
         },
       })
       saved = true
@@ -221,8 +227,8 @@ export async function saveBountyToDb(bounty: Bounty): Promise<boolean> {
     }
   }
 
-  // 3. Save to Cloud JSON storage so all devices across the web share the exact same global list
-  try {
+  // 3. Save to optional Cloud JSON storage
+  if (CLOUD_STORAGE_URL) try {
     const existing = (await getBountiesFromDb()) || []
     const map = new Map<number, Bounty>()
     map.set(bounty.id, bounty)

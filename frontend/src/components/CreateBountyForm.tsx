@@ -23,7 +23,7 @@ interface GitHubIssueDetails {
 
 export function CreateBountyForm() {
   const router = useRouter()
-  const { connected, address, demoMode, enableDemoMode, connect } = useWallet()
+  const { connected, address, connect } = useWallet()
   const [githubUser, setGithubUser] = useState<string | null>(null)
   const [step, setStep] = useState<1 | 2 | 3>(1)
 
@@ -110,9 +110,9 @@ export function CreateBountyForm() {
   const handleCreateAndFund = async () => {
     setError(null)
 
-    const creatorAddr = address || (demoMode ? 'GBTESTNETDEMO99999999999999999999999999999999999999' : null)
+    const creatorAddr = address
     if (!creatorAddr) {
-      setError('Please connect your Freighter wallet or enable Testnet Demo Mode')
+      setError('Please connect your Freighter wallet before creating an escrow.')
       return
     }
 
@@ -129,7 +129,6 @@ export function CreateBountyForm() {
           token: formData.token,
           deadline: formData.deadline,
           creator: creatorAddr,
-          txHash: `0x${Math.random().toString(16).substring(2)}${Math.random().toString(16).substring(2)}`
         })
       })
 
@@ -434,13 +433,13 @@ export function CreateBountyForm() {
           </div>
 
           {/* Wallet Status Banner */}
-          {!connected && !demoMode ? (
+          {!connected ? (
             <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-200 text-xs space-y-3">
               <div className="flex items-center gap-2 font-semibold">
                 <Lock className="w-4 h-4 text-amber-300" />
                 <span>Wallet Authorization Required</span>
               </div>
-              <p className="text-amber-200/80">Connect your Freighter Wallet or use Testnet Demo Mode to sign and deposit into escrow.</p>
+              <p className="text-amber-200/80">Connect your Freighter Wallet to sign and deposit into escrow.</p>
               <div className="flex gap-2">
                 <button
                   type="button"
@@ -448,13 +447,6 @@ export function CreateBountyForm() {
                   className="px-3 py-1.5 rounded bg-amber-500/20 text-amber-200 hover:bg-amber-500/30 text-xs font-medium"
                 >
                   Connect Freighter
-                </button>
-                <button
-                  type="button"
-                  onClick={() => enableDemoMode()}
-                  className="px-3 py-1.5 rounded bg-teal-500/20 text-teal-300 hover:bg-teal-500/30 text-xs font-medium"
-                >
-                  Use Demo Mode
                 </button>
               </div>
             </div>
@@ -464,10 +456,10 @@ export function CreateBountyForm() {
                 <ShieldCheck className="w-5 h-5 text-teal-400" />
                 <div>
                   <div className="font-bold text-white">
-                    {demoMode ? 'Testnet Demo Wallet Active' : 'Freighter Wallet Connected'}
+                    Freighter Wallet Connected
                   </div>
                   <div className="font-mono text-[11px] text-teal-300/80 truncate max-w-[200px] sm:max-w-xs">
-                    {address || 'GBTESTNETDEMO99999999999999999999999999999999999999'}
+                    {address}
                   </div>
                 </div>
               </div>
@@ -494,7 +486,7 @@ export function CreateBountyForm() {
             <Button
               type="button"
               onClick={handleCreateAndFund}
-              disabled={submitting || (!connected && !demoMode)}
+              disabled={submitting || !connected}
               className="w-2/3 py-3"
             >
               {submitting ? 'Signing & Depositing...' : `Sign & Deposit ${formData.amount} ${formData.token}`}

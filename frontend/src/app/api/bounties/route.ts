@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import type { Bounty } from '@/types'
 import { BOUNTIES_STORE } from '@/lib/bounties-store'
 import { getBountiesFromDb, saveBountyToDb } from '@/lib/db'
+import { requireSession } from '@/lib/auth'
 
 export async function GET() {
   const dbBounties = (await getBountiesFromDb()) || []
@@ -19,6 +20,8 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const session = requireSession(request)
+    if (session instanceof NextResponse) return session
     const body = await request.json()
     const { issueUrl, amount, token, deadline, creator } = body
 
@@ -49,6 +52,8 @@ export async function POST(request: NextRequest) {
       contributor: null,
       funded_at: Math.floor(Date.now() / 1000),
       paid_at: 0,
+      owner_github_login: session.login,
+      owner_wallet_address: creator,
     }
 
     // Persist to Neon DB if connected

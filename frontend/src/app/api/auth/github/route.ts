@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
   const token = await fetch('https://github.com/login/oauth/access_token', { method: 'POST', headers: { Accept: 'application/json', 'Content-Type': 'application/json' }, body: JSON.stringify({ client_id: process.env.GITHUB_OAUTH_CLIENT_ID, client_secret: process.env.GITHUB_OAUTH_CLIENT_SECRET, code }) }).then(r => r.json())
   if (!token.access_token) return NextResponse.redirect(new URL('/login?error=github-auth-failed', appUrl()))
   const user = await fetch('https://api.github.com/user', { headers: { Authorization: `Bearer ${token.access_token}`, Accept: 'application/vnd.github+json' } }).then(r => r.json())
-  const payload = Buffer.from(JSON.stringify({ login: user.login, avatarUrl: user.avatar_url })).toString('base64url')
+  const payload = Buffer.from(JSON.stringify({ login: user.login, avatarUrl: user.avatar_url, issuedAt: Math.floor(Date.now() / 1000) })).toString('base64url')
   const returnTo = cookies().get(returnName)?.value || '/profile'
   const response = NextResponse.redirect(new URL(returnTo.startsWith('/') ? returnTo : '/profile', appUrl()))
   response.cookies.set(sessionName, `${payload}.${sign(payload)}`, { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', maxAge: 60 * 60 * 24 * 7, path: '/' })

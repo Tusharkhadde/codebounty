@@ -14,6 +14,8 @@ export interface Bounty {
   contributor: string | null;
   funded_at: number;
   paid_at: number;
+  owner_github_login?: string | null;
+  owner_wallet_address?: string | null;
 }
 
 export interface BountyEvent {
