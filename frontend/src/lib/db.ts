@@ -2,9 +2,6 @@ import { neon } from '@neondatabase/serverless'
 import { getPrisma } from '@/lib/prisma'
 import type { Bounty } from '@/types'
 
-const FALLBACK_POSTGRES_URL =
-  'postgresql://neondb_owner:npg_g0hZ5kM8XyQW@ep-cold-shadow-a5p67q8r.us-east-2.aws.neon.tech/neondb?sslmode=require'
-
 const CLOUD_STORAGE_URL = 'https://api.npoint.io/c6a74b1e5239e248b11c'
 
 export async function clearAllBountiesDb(): Promise<boolean> {
@@ -46,8 +43,9 @@ export function getSql() {
     process.env.NEON_DATABASE_URL ||
     process.env.POSTGRES_URL ||
     process.env.NEONDB_URL ||
-    process.env.NEON_URL ||
-    FALLBACK_POSTGRES_URL
+    process.env.NEON_URL
+
+  if (!connectionString) return null
 
   try {
     return neon(connectionString)
@@ -119,7 +117,7 @@ export async function getBountiesFromDb(): Promise<Bounty[] | null> {
     }
   }
 
-  // 2. Try Neon SQL driver
+  // 2. Try Neon SQL driver if connection string is configured
   const sql = getSql()
   if (sql) {
     try {
@@ -207,7 +205,7 @@ export async function saveBountyToDb(bounty: Bounty): Promise<boolean> {
     }
   }
 
-  // 2. Save with Neon SQL driver
+  // 2. Save with Neon SQL driver if connection string is configured
   const sql = getSql()
   if (sql) {
     try {
