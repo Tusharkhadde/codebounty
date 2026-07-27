@@ -4,7 +4,11 @@ import { getBountiesFromDb, saveBountyToDb } from '@/lib/db'
 import { requireFreshSession, requireSession } from '@/lib/auth'
 import { getPrisma } from '@/lib/prisma'
 
-async function findBounty(id: number) { const stored = await getBountiesFromDb(); return (stored?.length ? stored : BOUNTIES_STORE).find(b => b.id === id) }
+async function findBounty(id: number) {
+  const stored = await getBountiesFromDb()
+  const merged = [...(stored || []), ...BOUNTIES_STORE]
+  return merged.find(b => b.id === id)
+}
 export async function GET(_request: NextRequest, { params }: { params: { id: string } }) { const bounty = await findBounty(Number(params.id)); return bounty ? NextResponse.json({ success: true, bounty }) : NextResponse.json({ error: 'Bounty not found' }, { status: 404 }) }
 
 export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
@@ -15,8 +19,9 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     if (!prUrl || !/^https:\/\/github\.com\/[\w-]+\/[\w-]+\/pull\/\d+\/?$/.test(prUrl)) return NextResponse.json({ error: 'A valid GitHub pull request URL is required.' }, { status: 400 })
     if (bounty.owner_github_login === session.login) return NextResponse.json({ error: 'Bounty owners cannot apply to their own bounty.' }, { status: 403 })
     if (bounty.contributor) return NextResponse.json({ error: 'This bounty already has a submission.' }, { status: 409 })
-    if (!walletAddress || walletAddress !== contributor) return NextResponse.json({ error: 'A verified wallet address is required.' }, { status: 400 })
-    bounty.linked_pr_url = prUrl; bounty.contributor = walletAddress; bounty.status = 'linked'; await saveBountyToDb(bounty)
+    const resolvedWalletAddress = walletAddress || contributor
+    if (!resolvedWalletAddress) return NextResponse.json({ error: 'A verified wallet address is required.' }, { status: 400 })
+    bounty.linked_pr_url = prUrl; bounty.contributor = resolvedWalletAddress; bounty.status = 'linked'; await saveBountyToDb(bounty)
     return NextResponse.json({ success: true, bounty })
   }
   if (!bounty.owner_github_login || bounty.owner_github_login !== session.login) return NextResponse.json({ error: 'Only the bounty owner can perform this action.' }, { status: 403 })
