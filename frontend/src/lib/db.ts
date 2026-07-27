@@ -199,7 +199,27 @@ export async function getBountiesFromDb(): Promise<Bounty[] | null> {
 export async function saveBountyToDb(bounty: Bounty): Promise<boolean> {
   let saved = false
 
-  // 1. Save with Prisma ORM if DATABASE_URL is set
+  // 1. Save with Neon SQL driver first so the durable write does not depend on Prisma adapter behavior.
+  const sql = getSql()
+  if (sql) {
+    try {
+      await initDb()
+      await sql`
+        INSERT INTO bounties (id, issue_url, creator, amount, token, deadline, status, linked_pr_url, contributor, funded_at, paid_at)
+        VALUES (${bounty.id}, ${bounty.issue_url}, ${bounty.creator}, ${bounty.amount}, ${bounty.token}, ${bounty.deadline}, ${bounty.status}, ${bounty.linked_pr_url}, ${bounty.contributor}, ${bounty.funded_at}, ${bounty.paid_at})
+        ON CONFLICT (id) DO UPDATE SET
+          status = EXCLUDED.status,
+          linked_pr_url = EXCLUDED.linked_pr_url,
+          contributor = EXCLUDED.contributor,
+          paid_at = EXCLUDED.paid_at;
+      `
+      saved = true
+    } catch (err) {
+      console.error('Neon DB save error:', err)
+    }
+  }
+
+  // 2. Mirror to Prisma when available, but do not fail the request if the mirror write fails.
   const prisma = getPrisma()
   if (prisma) {
     try {
@@ -229,29 +249,8 @@ export async function saveBountyToDb(bounty: Bounty): Promise<boolean> {
           ownerWalletAddress: bounty.owner_wallet_address,
         },
       })
-      saved = true
     } catch (err) {
       console.error('Prisma upsert error:', err)
-    }
-  }
-
-  // 2. Save with Neon SQL driver if connection string is configured
-  const sql = getSql()
-  if (sql) {
-    try {
-      await initDb()
-      await sql`
-        INSERT INTO bounties (id, issue_url, creator, amount, token, deadline, status, linked_pr_url, contributor, funded_at, paid_at)
-        VALUES (${bounty.id}, ${bounty.issue_url}, ${bounty.creator}, ${bounty.amount}, ${bounty.token}, ${bounty.deadline}, ${bounty.status}, ${bounty.linked_pr_url}, ${bounty.contributor}, ${bounty.funded_at}, ${bounty.paid_at})
-        ON CONFLICT (id) DO UPDATE SET
-          status = EXCLUDED.status,
-          linked_pr_url = EXCLUDED.linked_pr_url,
-          contributor = EXCLUDED.contributor,
-          paid_at = EXCLUDED.paid_at;
-      `
-      saved = true
-    } catch (err) {
-      console.error('Neon DB save error:', err)
     }
   }
 

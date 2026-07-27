@@ -244,7 +244,14 @@ vercel --prod
 NEXT_PUBLIC_BOUNTY_REGISTRY_ADDRESS=<address>
 NEXT_PUBLIC_MERGE_VERIFIER_ADDRESS=<address>
 NEXT_PUBLIC_STELLAR_NETWORK=futurenet
+
+# Required for bounty persistence across redeploys
+DATABASE_URL=<shared postgres or neon connection string>
+# or
+CLOUDBOUNTY_STORAGE_URL=<persistent json endpoint>
 ```
+
+If neither shared database nor cloud storage is configured, bounty data will only exist in the current server process and will be lost on redeploys.
 
 ## Testing
 
@@ -371,5 +378,6 @@ MIT
 - Built on [Stellar](https://stellar.org/) using [Soroban](https://soroban.stellar.com)
 - Wallet integration via [Freighter](https://freighter.app/)
 - Frontend powered by [Next.js](https://nextjs.org/) and [TailwindCSS](https://tailwindcss.com/)
-#   c o d e b o u n t y  
+#   c o d e b o u n t y 
+ 
  

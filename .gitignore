@@ -33,3 +33,4 @@ npm-debug.log*
 # Cargo
 Cargo.lock
 .agents
+frontend/.local-testcases/
