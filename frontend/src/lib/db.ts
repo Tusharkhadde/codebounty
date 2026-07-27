@@ -58,12 +58,14 @@ export async function initDb() {
   if (tableInitialized) return true
   const sql = getSql()
   if (!sql) return false
-  if (CLOUD_STORAGE_URL) try {
+  try {
     await sql`
       CREATE TABLE IF NOT EXISTS bounties (
         id INT PRIMARY KEY,
         issue_url TEXT NOT NULL,
         creator TEXT NOT NULL,
+        owner_github_login TEXT,
+        owner_wallet_address TEXT,
         amount DOUBLE PRECISION NOT NULL,
         token TEXT,
         deadline BIGINT NOT NULL,
@@ -75,6 +77,21 @@ export async function initDb() {
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
       );
     `
+    await sql`
+      CREATE TABLE IF NOT EXISTS audit_logs (
+        id TEXT NOT NULL PRIMARY KEY,
+        bounty_id INT NOT NULL,
+        github_login TEXT NOT NULL,
+        wallet_address TEXT,
+        action TEXT NOT NULL,
+        previous_state TEXT,
+        new_state TEXT,
+        transaction_hash TEXT,
+        ip_address TEXT,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+      );
+    `
+    await sql`CREATE INDEX IF NOT EXISTS audit_logs_bounty_id_idx ON audit_logs (bounty_id);`
     tableInitialized = true
     return true
   } catch (err) {
