@@ -16,11 +16,28 @@
 import express, { Request, Response, NextFunction } from 'express'
 import crypto from 'crypto'
 import dotenv from 'dotenv'
+import { createServer } from 'http'
+import { WebSocketServer, WebSocket } from 'ws'
 
 dotenv.config()
 
 const app = express()
 app.use(express.json())
+const httpServer = createServer(app)
+const websocketServer = new WebSocketServer({ server: httpServer, path: '/ws' })
+const websocketClients = new Set<WebSocket>()
+websocketServer.on('connection', socket => {
+  websocketClients.add(socket)
+  socket.send(JSON.stringify({ type: 'relay.connected' }))
+  socket.on('close', () => websocketClients.delete(socket))
+})
+
+function broadcastBountyUpdate(bountyId: number, event: string) {
+  const message = JSON.stringify({ type: 'bounty.updated', bountyId, event })
+  for (const socket of websocketClients) {
+    if (socket.readyState === WebSocket.OPEN) socket.send(message)
+  }
+}
 
 // --- Configuration ---
 const GITHUB_WEBHOOK_SECRET = process.env.GITHUB_WEBHOOK_SECRET || ''
@@ -241,6 +258,10 @@ app.post('/webhook/github', async (req: Request, res: Response) => {
     try {
       const event = req.body as GitHubPullRequestEvent
       await handleWebhook(event)
+      if (event.action === 'closed' && event.pull_request.merged) {
+        const bountyId = extractBountyId(event.pull_request.body)
+        if (bountyId !== null) broadcastBountyUpdate(bountyId, 'pull_request.merged')
+      }
       res.status(200).json({ status: 'ok' })
     } catch (err) {
       console.error('[ERROR] Failed to process webhook:', err)
@@ -272,6 +293,17 @@ app.get('/api/status', (_req: Request, res: Response) => {
   })
 })
 
+app.post('/events/bounty', (req: Request, res: Response) => {
+  const bountyId = Number(req.body?.bountyId)
+  const event = typeof req.body?.event === 'string' ? req.body.event : 'bounty.updated'
+  if (!Number.isInteger(bountyId)) {
+    res.status(400).json({ error: 'bountyId must be an integer' })
+    return
+  }
+  broadcastBountyUpdate(bountyId, event)
+  res.status(202).json({ status: 'broadcast' })
+})
+
 // --- Error handling middleware ---
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   console.error('[ERROR]', err)
@@ -279,7 +311,7 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
 })
 
 // --- Start server ---
-app.listen(PORT, () => {
+httpServer.listen(PORT, () => {
   console.log(`[RELAY] CodeBounty Oracle Relay running on port ${PORT}`)
   console.log(`[RELAY] RPC URL: ${SOROBAN_RPC_URL}`)
   console.log(`[RELAY] MergeVerifier: ${MERGE_VERIFIER_ADDRESS || 'not set'}`)

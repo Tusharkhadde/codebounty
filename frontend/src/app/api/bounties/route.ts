@@ -3,18 +3,15 @@ import type { Bounty } from '@/types'
 import { BOUNTIES_STORE } from '@/lib/bounties-store'
 import { getBountiesFromDb, saveBountyToDb } from '@/lib/db'
 import { requireSession } from '@/lib/auth'
+import { dedupeBounties } from '@/lib/bounty-dedupe'
 
 export async function GET() {
   const dbBounties = (await getBountiesFromDb()) || []
-  const map = new Map<number, Bounty>()
-  dbBounties.forEach(b => map.set(b.id, b))
-  BOUNTIES_STORE.forEach(b => {
-    if (!map.has(b.id)) map.set(b.id, b)
-  })
+  const bounties = dedupeBounties([...dbBounties, ...BOUNTIES_STORE])
 
   return NextResponse.json({
     success: true,
-    bounties: Array.from(map.values()),
+    bounties,
   })
 }
 
@@ -23,7 +20,7 @@ export async function POST(request: NextRequest) {
     const session = requireSession(request)
     if (session instanceof NextResponse) return session
     const body = await request.json()
-    const { issueUrl, amount, token, deadline, creator } = body
+    const { id, issueUrl, amount, token, deadline, creator } = body
 
     if (!issueUrl || !amount || !creator) {
       return NextResponse.json(
@@ -41,7 +38,7 @@ export async function POST(request: NextRequest) {
     }
 
     const newBounty: Bounty = {
-      id: Math.floor(100 + Math.random() * 9000),
+      id: Number.isInteger(Number(id)) ? Number(id) : Date.now(),
       issue_url: issueUrl,
       creator: creator,
       amount: numAmount,
@@ -60,7 +57,18 @@ export async function POST(request: NextRequest) {
     await saveBountyToDb(newBounty)
 
     // Also update in-memory fallback
-    BOUNTIES_STORE.unshift(newBounty)
+    const existingIndex = BOUNTIES_STORE.findIndex(b => b.id === newBounty.id)
+    if (existingIndex >= 0) BOUNTIES_STORE[existingIndex] = newBounty
+    else BOUNTIES_STORE.unshift(newBounty)
+
+    const relayUrl = process.env.RELAY_URL || process.env.NEXT_PUBLIC_RELAY_URL
+    if (relayUrl) {
+      await fetch(`${relayUrl.replace(/\/$/, '')}/events/bounty`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bountyId: newBounty.id, event: 'bounty.created' }),
+      }).catch(() => undefined)
+    }
 
     return NextResponse.json({
       success: true,

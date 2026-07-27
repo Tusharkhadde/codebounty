@@ -8,6 +8,7 @@ import { EmptyState } from '@/components/EmptyState'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import type { Bounty, BountyStatus } from '@/types'
+import { dedupeBounties } from '@/lib/bounty-dedupe'
 
 export default function BountiesPage() {
   const [bounties, setBounties] = useState<Bounty[]>([])
@@ -27,51 +28,57 @@ export default function BountiesPage() {
         if (data.success && Array.isArray(data.bounties)) {
           serverBounties = data.bounties
         }
-        // Auto-sync any local bounties created before the database deployment
+        // Local storage is a read-only fallback. Never write during a refresh:
+        // doing so creates a new server record for the same bounty each time.
         try {
           const localSaved = window.localStorage.getItem('codebounty.user-bounties')
           if (localSaved) {
             const userBounties: Bounty[] = JSON.parse(localSaved)
-            const serverIds = new Set(serverBounties.map(b => b.id))
             const map = new Map<number, Bounty>()
             userBounties.forEach(b => map.set(b.id, b))
             serverBounties.forEach(b => map.set(b.id, b))
             const merged = Array.from(map.values())
             
-            // Push missing local bounties to cloud DB so friends can see them
-            for (const localB of userBounties) {
-              if (!serverIds.has(localB.id)) {
-                fetch('/api/bounties', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    issueUrl: localB.issue_url,
-                    amount: String(localB.amount),
-                    token: localB.token || 'XLM',
-                    deadline: String(localB.deadline),
-                    creator: localB.creator,
-                  }),
-                }).catch(() => {})
-              }
-            }
-
-            setBounties(merged)
+            setBounties(dedupeBounties(merged))
             return
           }
         } catch (e) {
           // ignore
         }
-        setBounties(serverBounties)
+        setBounties(dedupeBounties(serverBounties))
       })
       .catch(() => {
         try {
           const localSaved = window.localStorage.getItem('codebounty.user-bounties')
           if (localSaved) {
-            setBounties(JSON.parse(localSaved))
+            setBounties(dedupeBounties(JSON.parse(localSaved)))
           }
         } catch (e) {}
       })
       .finally(() => setLoading(false))
+  }, [])
+
+  useEffect(() => {
+    const configuredUrl = process.env.NEXT_PUBLIC_RELAY_WS_URL
+    if (!configuredUrl || typeof window === 'undefined') return
+    const socket = new WebSocket(configuredUrl)
+    socket.onmessage = event => {
+      try {
+        const message = JSON.parse(event.data)
+        if (message.type !== 'bounty.updated') return
+        fetch('/api/bounties', { cache: 'no-store' })
+          .then(res => res.json())
+          .then(data => {
+            if (data.success && Array.isArray(data.bounties)) {
+              setBounties(dedupeBounties(data.bounties))
+            }
+          })
+          .catch(() => undefined)
+      } catch {
+        // Ignore malformed relay messages; the next event can still update us.
+      }
+    }
+    return () => socket.close()
   }, [])
 
   const filtered = bounties
