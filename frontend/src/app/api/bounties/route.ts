@@ -21,6 +21,7 @@ export async function POST(request: NextRequest) {
     if (session instanceof NextResponse) return session
     const body = await request.json()
     const { id, issueUrl, amount, token, deadline, creator } = body
+    const MAX_INT_ID = 2147483647
 
     if (!issueUrl || !amount || !creator) {
       return NextResponse.json(
@@ -37,8 +38,28 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const requestedId = Number(id)
+    let resolvedId: number
+    if (Number.isInteger(requestedId) && requestedId > 0 && requestedId <= MAX_INT_ID) {
+      resolvedId = requestedId
+    } else {
+      const existing = (await getBountiesFromDb()) || BOUNTIES_STORE
+      const maxExistingId = existing.reduce((maxId, bounty) => {
+        const numericId = Number(bounty.id)
+        return Number.isFinite(numericId) ? Math.max(maxId, numericId) : maxId
+      }, 0)
+      resolvedId = maxExistingId + 1
+    }
+
+    if (!Number.isInteger(resolvedId) || resolvedId <= 0 || resolvedId > MAX_INT_ID) {
+      return NextResponse.json(
+        { error: 'Unable to allocate a valid bounty id for storage.' },
+        { status: 500 }
+      )
+    }
+
     const newBounty: Bounty = {
-      id: Number.isInteger(Number(id)) ? Number(id) : Date.now(),
+      id: resolvedId,
       issue_url: issueUrl,
       creator: creator,
       amount: numAmount,
