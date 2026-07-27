@@ -53,8 +53,17 @@ export async function POST(request: NextRequest) {
       owner_wallet_address: creator,
     }
 
-    // Persist to Neon DB if connected
-    await saveBountyToDb(newBounty)
+    // Persist to a shared store if available.
+    const saved = await saveBountyToDb(newBounty)
+    if (!saved && (process.env.VERCEL || process.env.NODE_ENV === 'production')) {
+      return NextResponse.json(
+        {
+          error:
+            'No persistent bounty storage is configured for this deployment. Add DATABASE_URL/NEON_DATABASE_URL or CLOUDBOUNTY_STORAGE_URL so bounties survive Vercel redeploys.',
+        },
+        { status: 500 }
+      )
+    }
 
     // Also update in-memory fallback
     const existingIndex = BOUNTIES_STORE.findIndex(b => b.id === newBounty.id)
