@@ -28,32 +28,10 @@ export default function BountiesPage() {
         if (data.success && Array.isArray(data.bounties)) {
           serverBounties = data.bounties
         }
-        // Local storage is a read-only fallback. Never write during a refresh:
-        // doing so creates a new server record for the same bounty each time.
-        try {
-          const localSaved = window.localStorage.getItem('codebounty.user-bounties')
-          if (localSaved) {
-            const userBounties: Bounty[] = JSON.parse(localSaved)
-            const map = new Map<number, Bounty>()
-            userBounties.forEach(b => map.set(b.id, b))
-            serverBounties.forEach(b => map.set(b.id, b))
-            const merged = Array.from(map.values())
-            
-            setBounties(dedupeBounties(merged))
-            return
-          }
-        } catch (e) {
-          // ignore
-        }
         setBounties(dedupeBounties(serverBounties))
       })
       .catch(() => {
-        try {
-          const localSaved = window.localStorage.getItem('codebounty.user-bounties')
-          if (localSaved) {
-            setBounties(dedupeBounties(JSON.parse(localSaved)))
-          }
-        } catch (e) {}
+        setBounties([])
       })
       .finally(() => setLoading(false))
   }, [])
@@ -120,10 +98,9 @@ export default function BountiesPage() {
           {bounties.length > 0 && (
             <Button
               onClick={async () => {
-                if (!confirm('Clear all test bounties from the global database and local storage?')) return
+                if (!confirm('Clear all test bounties from the database?')) return
                 try {
                   await fetch('/api/bounties', { method: 'DELETE' })
-                  window.localStorage.removeItem('codebounty.user-bounties')
                   setBounties([])
                 } catch (e) {
                   alert('Failed to clear bounties')

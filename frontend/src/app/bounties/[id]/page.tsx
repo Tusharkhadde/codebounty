@@ -54,34 +54,8 @@ export default function BountyDetailsPage() {
         return
       }
 
-      // Check localStorage for client-side created bounties
-      const localSaved = window.localStorage.getItem('codebounty.user-bounties')
-      if (localSaved) {
-        const parsed = JSON.parse(localSaved)
-        const found = parsed.find((b: Bounty) => String(b.id) === String(bountyId))
-        if (found) {
-          setBounty(found)
-          return
-        }
-      }
-
       throw new Error(data?.error || 'Bounty not found')
     } catch (err: any) {
-      // Final fallback check in case network error
-      const localSaved = window.localStorage.getItem('codebounty.user-bounties')
-      if (localSaved) {
-        try {
-          const parsed = JSON.parse(localSaved)
-          const found = parsed.find((b: Bounty) => String(b.id) === String(bountyId))
-          if (found) {
-            setBounty(found)
-            setError(null)
-            return
-          }
-        } catch (e) {
-          // ignore
-        }
-      }
       setError(err?.message || 'Failed to load bounty')
     } finally {
       setLoading(false)
@@ -154,11 +128,6 @@ export default function BountyDetailsPage() {
     if (!confirm('Permanently delete this test bounty?')) return
     try {
       await fetch(`/api/bounties/${bountyId}`, { method: 'DELETE' })
-      const localSaved = window.localStorage.getItem('codebounty.user-bounties')
-      if (localSaved) {
-        const parsed = JSON.parse(localSaved).filter((b: Bounty) => String(b.id) !== String(bountyId))
-        window.localStorage.setItem('codebounty.user-bounties', JSON.stringify(parsed))
-      }
       window.location.href = '/bounties'
     } catch (e) {}
   }
