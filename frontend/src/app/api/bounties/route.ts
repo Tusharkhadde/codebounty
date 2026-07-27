@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import type { Bounty } from '@/types'
 import { BOUNTIES_STORE } from '@/lib/bounties-store'
-import { getBountiesFromDb, saveBountyToDb } from '@/lib/db'
+import { getBountiesFromDb, hasPersistentStorageConfigured, saveBountyToDb } from '@/lib/db'
 import { requireSession } from '@/lib/auth'
 import { dedupeBounties } from '@/lib/bounty-dedupe'
 
@@ -53,13 +53,25 @@ export async function POST(request: NextRequest) {
       owner_wallet_address: creator,
     }
 
+    const hasPersistentStorage = hasPersistentStorageConfigured()
+
     // Persist to a shared store if available.
     const saved = await saveBountyToDb(newBounty)
-    if (!saved && (process.env.VERCEL || process.env.NODE_ENV === 'production')) {
+    if (!hasPersistentStorage && (process.env.VERCEL || process.env.NODE_ENV === 'production')) {
       return NextResponse.json(
         {
           error:
             'No persistent bounty storage is configured for this deployment. Add DATABASE_URL/NEON_DATABASE_URL or CLOUDBOUNTY_STORAGE_URL so bounties survive Vercel redeploys.',
+        },
+        { status: 500 }
+      )
+    }
+
+    if (!saved) {
+      return NextResponse.json(
+        {
+          error:
+            'Bounty creation failed to write to the configured storage backend. Check the Vercel DATABASE_URL value, database access, and migrations.',
         },
         { status: 500 }
       )

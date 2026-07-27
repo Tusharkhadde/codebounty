@@ -4,6 +4,17 @@ import type { Bounty } from '@/types'
 
 const CLOUD_STORAGE_URL = process.env.CLOUDBOUNTY_STORAGE_URL || ''
 
+export function hasPersistentStorageConfigured() {
+  return Boolean(
+    process.env.DATABASE_URL ||
+    process.env.NEON_DATABASE_URL ||
+    process.env.POSTGRES_URL ||
+    process.env.NEONDB_URL ||
+    process.env.NEON_URL ||
+    CLOUD_STORAGE_URL
+  )
+}
+
 export async function clearAllBountiesDb(): Promise<boolean> {
   if (CLOUD_STORAGE_URL) try {
     await fetch(CLOUD_STORAGE_URL, {
