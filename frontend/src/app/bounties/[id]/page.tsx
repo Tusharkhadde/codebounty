@@ -33,6 +33,10 @@ export default function BountyDetailsPage() {
   const [bounty, setBounty] = useState<Bounty | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [githubUser, setGithubUser] = useState<string | null>(null)
+  const [pullRequests, setPullRequests] = useState<Array<{ number: number; title: string; state: string; htmlUrl: string; apiUrl: string; author: string }>>([])
+  const [prsLoading, setPrsLoading] = useState(false)
+  const [prsError, setPrsError] = useState<string | null>(null)
 
   // PR Link Modal State
   const [showLinkModal, setShowLinkModal] = useState(false)
@@ -67,6 +71,51 @@ export default function BountyDetailsPage() {
       fetchBounty()
     }
   }, [bountyId, fetchBounty])
+
+  useEffect(() => {
+    const fetchGithubUser = async () => {
+      try {
+        const res = await fetch('/api/auth/me')
+        if (!res.ok) return
+        const data = await res.json()
+        if (data?.authenticated && data?.user?.login) {
+          setGithubUser(data.user.login)
+        }
+      } catch {
+        setGithubUser(null)
+      }
+    }
+
+    fetchGithubUser()
+  }, [])
+
+  useEffect(() => {
+    const fetchPullRequests = async () => {
+      if (!bounty?.issue_url) {
+        setPullRequests([])
+        return
+      }
+
+      setPrsError(null)
+      setPrsLoading(true)
+      try {
+        const res = await fetch(
+          `/api/github/pull-requests?issueUrl=${encodeURIComponent(bounty.issue_url)}`
+        )
+        const data = await res.json()
+        if (!res.ok || !data.success) {
+          throw new Error(data.error || 'Failed to load matching pull requests')
+        }
+        setPullRequests(data.pullRequests || [])
+      } catch (err: any) {
+        setPrsError(err?.message || 'Unable to load pull requests')
+      } finally {
+        setPrsLoading(false)
+      }
+    }
+
+    fetchPullRequests()
+  }, [bounty?.issue_url])
 
   const handleLinkPR = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -103,6 +152,12 @@ export default function BountyDetailsPage() {
     }
   }
 
+  const isOwner = !!(
+    bounty?.owner_github_login &&
+    githubUser &&
+    bounty.owner_github_login.toLowerCase() === githubUser.toLowerCase()
+  )
+
   const handleCancelBounty = async () => {
     if (!confirm('Are you sure you want to cancel this bounty and refund the escrow funds back to your wallet?')) return
     setCancelling(true)
@@ -131,6 +186,48 @@ export default function BountyDetailsPage() {
       window.location.href = '/bounties'
     } catch (e) {}
   }
+
+  useEffect(() => {
+    const linkedPrUrl = bounty?.linked_pr_url
+    if (!linkedPrUrl || bounty.status !== 'linked') return
+
+    let cancelled = false
+
+    const verifyMergeStatus = async () => {
+      try {
+        const res = await fetch(
+          `/api/github/pull-request?url=${encodeURIComponent(linkedPrUrl)}`,
+          { cache: 'no-store' }
+        )
+        const data = await res.json()
+
+        if (cancelled || !res.ok || !data.success || !data.pullRequest?.merged) {
+          return
+        }
+
+        const payRes = await fetch(`/api/bounties/${bountyId}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'pay' }),
+        })
+        const payData = await payRes.json()
+
+        if (!cancelled && payRes.ok && payData.success) {
+          setBounty(payData.bounty)
+        }
+      } catch (err) {
+        console.error('Failed to verify linked pull request merge status:', err)
+      }
+    }
+
+    verifyMergeStatus()
+    const intervalId = window.setInterval(verifyMergeStatus, 30000)
+
+    return () => {
+      cancelled = true
+      window.clearInterval(intervalId)
+    }
+  }, [bounty?.linked_pr_url, bounty?.status, bountyId])
 
   const handleSimulatePayout = async () => {
     try {
@@ -289,40 +386,80 @@ export default function BountyDetailsPage() {
             </Card>
           )}
 
-          {/* Paid Out Banner */}
-          {bounty.status === 'paid' && (
-            <Card className="p-6 border-teal-500/40 bg-teal-500/[0.05] space-y-3 animate-fade-in">
-              <div className="flex items-center gap-3 text-teal-300">
-                <CheckCircle2 className="w-6 h-6" />
-                <h3 className="text-base font-bold text-white">Escrow Payment Released</h3>
+          <Card className="p-6 border-white/10 bg-white/[0.02] space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <GitPullRequest className="w-4 h-4" /> Pull Requests referencing this issue
+              </h3>
+              <span className="text-xs text-slate-400">
+                {prsLoading ? 'Loading…' : `${pullRequests.length} found`}
+              </span>
+            </div>
+
+              {prsError && (
+                <p className="text-xs text-rose-300">{prsError}</p>
+              )}
+
+              {!prsLoading && pullRequests.length === 0 && !prsError && (
+                <p className="text-xs text-slate-400">No pull requests found that reference this issue yet.</p>
+              )}
+
+              <div className="space-y-3">
+                {pullRequests.map((pr) => (
+                  <a
+                    key={pr.number}
+                    href={pr.htmlUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block rounded-xl border border-white/10 bg-black/40 p-4 text-xs text-slate-200 hover:border-teal-500/30 hover:bg-slate-900 transition"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="font-semibold text-slate-100 truncate">#{pr.number} {pr.title}</span>
+                      <span className="text-[11px] uppercase tracking-[0.2em] text-slate-400">{pr.state}</span>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between text-[11px] text-slate-500">
+                      <span>{pr.author}</span>
+                      <span>{pr.htmlUrl.replace('https://github.com/', '')}</span>
+                    </div>
+                  </a>
+                ))}
               </div>
-              <p className="text-xs text-slate-300 leading-relaxed">
-                The pull request was verified as merged. {bounty.amount} {bounty.token || 'XLM'} has been transferred to the contributor&apos;s wallet.
-              </p>
             </Card>
-          )}
         </div>
 
-        {/* Right Col: Escrow Actions & Details */}
         <div className="space-y-6">
-          {/* Action Card */}
           <Card className="p-6 border-white/10 bg-white/[0.02] space-y-5">
             <h3 className="text-sm font-bold text-white flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-teal-300" /> Bounty Actions
             </h3>
 
-            {bounty.status === 'funded' && (
-              <Button
-                onClick={() => setShowLinkModal(true)}
-                className="w-full py-3 text-xs"
-              >
-                <GitPullRequest className="w-4 h-4 ml-1" /> Submit PR Solution
-              </Button>
-            )}
-
-            {bounty.status === 'linked' && (
-              <p className="text-xs text-slate-400 text-center">
+            {bounty.status === 'funded' ? (
+              <>
+                <Button
+                  onClick={() => setShowLinkModal(true)}
+                  disabled={isOwner || linking}
+                  className="w-full py-3 text-xs"
+                >
+                  <GitPullRequest className="w-4 h-4 ml-1" />
+                  {isOwner ? 'Bounty creators cannot submit PRs' : 'Submit PR Solution'}
+                </Button>
+                {isOwner ? (
+                  <p className="text-xs text-slate-400">
+                    You created this bounty, so you cannot submit the PR. Please let another contributor apply.
+                  </p>
+                ) : (
+                  <p className="text-xs text-slate-400">
+                    Link your GitHub PR here once you have opened it against the issue.
+                  </p>
+                )}
+              </>
+            ) : bounty.status === 'linked' ? (
+              <p className="text-xs text-slate-400">
                 A solution PR has been linked! Payout triggers automatically when merged on GitHub.
+              </p>
+            ) : (
+              <p className="text-xs text-slate-400">
+                This bounty is not currently available for PR submission.
               </p>
             )}
 
@@ -352,7 +489,6 @@ export default function BountyDetailsPage() {
             </Button>
           </Card>
 
-          {/* Escrow Details */}
           <Card className="p-6 border-white/10 bg-white/[0.02] space-y-4 text-xs">
             <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">Escrow Specs</h3>
 
