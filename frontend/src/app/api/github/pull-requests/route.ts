@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
   }
 
   const [, owner, repo, issueNumber] = match
-  const query = `repo:${owner}/${repo}+type:pr+in:title,body+%23${issueNumber}`
+  const query = `repo:${owner}/${repo}+is:pr+in:title,body+%23${issueNumber}`
   const searchUrl = `https://api.github.com/search/issues?q=${encodeURIComponent(query)}&per_page=30`
 
   try {
