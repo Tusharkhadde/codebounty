@@ -168,6 +168,12 @@ export default function BountyDetailsPage() {
     bounty.owner_github_login.toLowerCase() === githubUser.toLowerCase()
   )
 
+  const isContributor = !!(
+    bounty?.contributor &&
+    address &&
+    bounty.contributor.toLowerCase() === address.toLowerCase()
+  )
+
   const handleCancelBounty = async () => {
     if (!confirm('Are you sure you want to cancel this bounty and refund the escrow funds back to your wallet?')) return
     setCancelling(true)
@@ -222,7 +228,7 @@ export default function BountyDetailsPage() {
 
         if (data.pullRequest?.merged) {
           setPrMerged(true)
-          if (isOwner) {
+          if (isOwner || isContributor) {
             setShowClaimModal(true)
           }
         }
@@ -267,7 +273,7 @@ export default function BountyDetailsPage() {
       }
 
       setPrMerged(true)
-      if (isOwner) {
+      if (isOwner || isContributor) {
         setShowClaimModal(true)
       }
     } catch (err: any) {
@@ -279,26 +285,34 @@ export default function BountyDetailsPage() {
     }
   }
 
-  const handlePayContributor = async () => {
+  const handleReleasePayment = async () => {
     if (!bounty?.contributor) {
-      alert('No contributor wallet address is available to pay.')
+      alert('No contributor wallet address is available for payout.')
       return
     }
+
+    if (!address && !isOwner) {
+      alert('Connect your wallet to claim the bounty.')
+      return
+    }
+
+    const action = isOwner ? 'pay' : 'claim'
+    const walletAddress = isOwner ? bounty.contributor : address
 
     try {
       const res = await fetch(`/api/bounties/${bountyId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'pay', walletAddress: bounty.contributor })
+        body: JSON.stringify({ action, walletAddress })
       })
       const data = await res.json()
       if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Failed to pay contributor')
+        throw new Error(data.error || 'Failed to release payment')
       }
       setBounty(data.bounty)
       setShowClaimModal(false)
     } catch (err: any) {
-      alert(err?.message || 'Failed to pay contributor. Please try again.')
+      alert(err?.message || 'Failed to release payment. Please try again.')
     }
   }
 
@@ -466,17 +480,23 @@ export default function BountyDetailsPage() {
                         {prMerged ? 'Release Payment' : 'Waiting for merge'}
                       </Button>
                     </div>
+                  ) : isContributor ? (
+                    <div className="flex flex-col gap-2 sm:flex-row justify-end">
+                      <Button
+                        onClick={() => setShowClaimModal(true)}
+                        size="sm"
+                        disabled={!prMerged}
+                        className="bg-emerald-500 hover:bg-emerald-400 disabled:bg-slate-600 text-black text-xs font-bold"
+                      >
+                        {prMerged ? 'Claim Reward' : 'Waiting for merge'}
+                      </Button>
+                    </div>
                   ) : (
                     <p className="text-xs text-slate-400">
-                      Only the bounty owner can release this payout. Once the linked PR is merged, the owner can send the reward to the contributor.
+                      Only the bounty owner or the recorded contributor can act here. Once the linked PR is merged, the owner can release payment or the contributor can claim it.
                     </p>
                   )}
                 </div>
-              )}
-              {bounty.status === 'linked' && !isOwner && (
-                <p className="pt-2 text-right text-xs text-slate-400">
-                  Only the bounty owner can trigger this payout simulation. Payout also happens automatically when the linked PR is merged.
-                </p>
               )}
             </Card>
           )}
@@ -714,11 +734,11 @@ export default function BountyDetailsPage() {
 
             <div className="flex flex-col gap-3">
               <Button
-                onClick={handlePayContributor}
-                disabled={!bounty.contributor}
+                onClick={handleReleasePayment}
+                disabled={!bounty.contributor || (!isOwner && !isContributor)}
                 className="w-full py-3 text-xs bg-emerald-500 hover:bg-emerald-400 text-black disabled:cursor-not-allowed disabled:bg-emerald-600/40"
               >
-                {bounty.contributor ? 'Release Reward to Contributor' : 'Missing Contributor Wallet'}
+                {isOwner ? 'Release Reward to Contributor' : 'Claim Reward to My Wallet'}
               </Button>
               <Button
                 variant="outline"

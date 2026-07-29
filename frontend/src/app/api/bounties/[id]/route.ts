@@ -73,12 +73,21 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     return NextResponse.json({ success: true, bounty })
   }
 
-  if (!bounty.owner_github_login || bounty.owner_github_login !== session.login) {
-    return NextResponse.json({ error: 'Only the bounty owner can perform this action.' }, { status: 403 })
+  const allowedActions = ['cancel', 'pay', 'claim']
+  if (!allowedActions.includes(action)) {
+    return NextResponse.json({ error: 'Unknown action specified' }, { status: 400 })
   }
 
-  if (!['cancel', 'pay'].includes(action)) {
-    return NextResponse.json({ error: 'Unknown action specified' }, { status: 400 })
+  if (action === 'cancel') {
+    if (!bounty.owner_github_login || bounty.owner_github_login !== session.login) {
+      return NextResponse.json({ error: 'Only the bounty owner can perform this action.' }, { status: 403 })
+    }
+  }
+
+  if (action === 'pay') {
+    if (!bounty.owner_github_login || bounty.owner_github_login !== session.login) {
+      return NextResponse.json({ error: 'Only the bounty owner can release payment.' }, { status: 403 })
+    }
   }
 
   const fresh = requireFreshSession(request)
@@ -105,6 +114,10 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
     const merged = await verifyPullRequestMerged(bounty.linked_pr_url)
     if (!merged) {
       return NextResponse.json({ error: 'The linked pull request is not merged yet. Payout can only be released after merge.', status: 400 })
+    }
+
+    if (action === 'claim' && resolvedPaymentAddress !== bounty.contributor) {
+      return NextResponse.json({ error: 'Claiming requires the stored contributor wallet address.' }, { status: 400 })
     }
 
     bounty.status = 'paid'
