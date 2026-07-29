@@ -234,31 +234,37 @@ export default function BountyDetailsPage() {
       cancelled = true
       window.clearInterval(intervalId)
     }
-  }, [bounty?.linked_pr_url, bounty?.status, bountyId])
+  }, [bounty?.linked_pr_url, bounty?.status, bountyId, isOwner])
 
   const handleSimulatePayout = async () => {
     setSimulateError(null)
     setSimulating(true)
 
     try {
-      const res = await fetch(`/api/bounties/${bountyId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'pay', walletAddress: bounty?.contributor })
-      })
-
-      const data = await res.json()
-      if (!res.ok || !data.success) {
-        const message = data?.error || 'Failed to simulate payout.'
-        setSimulateError(message)
-        console.error(message)
-        return
+      if (!bounty?.linked_pr_url) {
+        throw new Error('No linked pull request is available for verification.')
       }
 
-      setBounty(data.bounty)
-      setShowClaimModal(true)
+      const res = await fetch(
+        `/api/github/pull-request?url=${encodeURIComponent(bounty.linked_pr_url)}`,
+        { cache: 'no-store' }
+      )
+      const data = await res.json()
+
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to verify pull request status.')
+      }
+
+      if (!data.pullRequest?.merged) {
+        throw new Error('The linked pull request is not merged yet.')
+      }
+
+      setPrMerged(true)
+      if (isOwner) {
+        setShowClaimModal(true)
+      }
     } catch (err: any) {
-      const message = err?.message || 'Failed to simulate payout.'
+      const message = err?.message || 'Failed to verify pull request merge.'
       setSimulateError(message)
       console.error(message)
     } finally {
@@ -422,6 +428,7 @@ export default function BountyDetailsPage() {
                 </div>
               )}
               {bounty.status === 'linked' && isOwner && (
+                <>
                   <div className="flex flex-col gap-2 sm:flex-row justify-end">
                     <Button
                       onClick={handleSimulatePayout}
@@ -445,7 +452,7 @@ export default function BountyDetailsPage() {
                   {simulateError && (
                     <p className="text-right text-xs text-rose-300">{simulateError}</p>
                   )}
-                </div>
+                </>
               )}
               {bounty.status === 'linked' && !isOwner && (
                 <p className="pt-2 text-right text-xs text-slate-400">
@@ -666,9 +673,9 @@ export default function BountyDetailsPage() {
           <Card className="w-full max-w-lg p-6 space-y-5 border-emerald-500/30 bg-slate-950">
             <div className="flex items-start justify-between gap-4">
               <div className="space-y-2">
-                <h3 className="text-lg font-bold text-white">Claim Your Bounty</h3>
+                <h3 className="text-lg font-bold text-white">Release Payment to Contributor</h3>
                 <p className="text-sm text-slate-400">
-                  The linked pull request has merged. Send the bounty reward directly to the contributor&apos;s recorded wallet address.
+                  The linked pull request has merged. Release the escrowed reward directly to the contributor&apos;s recorded Stellar wallet address.
                 </p>
               </div>
               <button
@@ -680,7 +687,7 @@ export default function BountyDetailsPage() {
             </div>
 
             <div className="rounded-2xl border border-teal-500/20 bg-teal-500/5 p-4 text-sm text-slate-100">
-              <p className="font-semibold text-teal-200">Contributor wallet:</p>
+              <p className="font-semibold text-teal-200">Contributor wallet</p>
               <p className="mt-1 font-mono text-xs text-slate-300 break-all">
                 {bounty.contributor || 'No contributor wallet found'}
               </p>
@@ -689,9 +696,10 @@ export default function BountyDetailsPage() {
             <div className="flex flex-col gap-3">
               <Button
                 onClick={handlePayContributor}
-                className="w-full py-3 text-xs bg-emerald-500 hover:bg-emerald-400 text-black"
+                disabled={!bounty.contributor}
+                className="w-full py-3 text-xs bg-emerald-500 hover:bg-emerald-400 text-black disabled:cursor-not-allowed disabled:bg-emerald-600/40"
               >
-                Send Reward to Contributor
+                {bounty.contributor ? 'Release Reward to Contributor' : 'Missing Contributor Wallet'}
               </Button>
               <Button
                 variant="outline"
