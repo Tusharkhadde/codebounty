@@ -125,6 +125,11 @@ export default function BountyDetailsPage() {
     e.preventDefault()
     setLinkError(null)
 
+    if (!address) {
+      setLinkError('Connect your wallet before linking a PR so the contributor payout address can be recorded.')
+      return
+    }
+
     if (!prUrl.trim() || !/^https:\/\/github\.com\/[\w-]+\/[\w-]+\/pull\/\d+\/?$/.test(prUrl.trim())) {
       setLinkError('Please enter a valid GitHub Pull Request URL (e.g. https://github.com/owner/repo/pull/42)')
       return
@@ -138,7 +143,7 @@ export default function BountyDetailsPage() {
         body: JSON.stringify({
           action: 'link_pr',
           prUrl: prUrl.trim(),
-          contributor: address || 'GAPK4U290ZX812903810293810293810293810293'
+          contributor: address
         })
       })
       const data = await res.json()
@@ -216,20 +221,7 @@ export default function BountyDetailsPage() {
           }
         }
 
-        if (!data.pullRequest?.merged) {
-          return
-        }
-
-        const payRes = await fetch(`/api/bounties/${bountyId}`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'pay' }),
-        })
-        const payData = await payRes.json()
-
-        if (!cancelled && payRes.ok && payData.success) {
-          setBounty(payData.bounty)
-        }
+        return
       } catch (err) {
         console.error('Failed to verify linked pull request merge status:', err)
       }
@@ -252,7 +244,7 @@ export default function BountyDetailsPage() {
       const res = await fetch(`/api/bounties/${bountyId}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'pay' })
+        body: JSON.stringify({ action: 'pay', walletAddress: bounty?.contributor })
       })
 
       const data = await res.json()
@@ -271,6 +263,29 @@ export default function BountyDetailsPage() {
       console.error(message)
     } finally {
       setSimulating(false)
+    }
+  }
+
+  const handlePayContributor = async () => {
+    if (!bounty?.contributor) {
+      alert('No contributor wallet address is available to pay.')
+      return
+    }
+
+    try {
+      const res = await fetch(`/api/bounties/${bountyId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'pay', walletAddress: bounty.contributor })
+      })
+      const data = await res.json()
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to pay contributor')
+      }
+      setBounty(data.bounty)
+      setShowClaimModal(false)
+    } catch (err: any) {
+      alert(err?.message || 'Failed to pay contributor. Please try again.')
     }
   }
 
@@ -400,9 +415,14 @@ export default function BountyDetailsPage() {
                 <span className="truncate">{bounty.linked_pr_url}</span>
                 <ExternalLink className="w-3.5 h-3.5 shrink-0 ml-2" />
               </a>
+              {bounty.contributor && (
+                <div className="mt-2 rounded-xl border border-teal-500/20 bg-teal-500/5 p-3 text-xs text-slate-300">
+                  <div className="font-medium text-teal-200">Contributor wallet detected</div>
+                  <div className="mt-1 font-mono break-all text-slate-300">{bounty.contributor}</div>
+                </div>
+              )}
               {bounty.status === 'linked' && isOwner && (
-                <div className="pt-2 space-y-2">
-                  <div className="flex justify-end gap-2">
+                  <div className="flex flex-col gap-2 sm:flex-row justify-end">
                     <Button
                       onClick={handleSimulatePayout}
                       size="sm"
@@ -418,7 +438,7 @@ export default function BountyDetailsPage() {
                         size="sm"
                         className="bg-teal-500 hover:bg-teal-400 text-black text-xs font-bold"
                       >
-                        Claim Bounty
+                        Pay Contributor
                       </Button>
                     )}
                   </div>
@@ -648,7 +668,7 @@ export default function BountyDetailsPage() {
               <div className="space-y-2">
                 <h3 className="text-lg font-bold text-white">Claim Your Bounty</h3>
                 <p className="text-sm text-slate-400">
-                  Your merged pull request was detected, and this bounty owner identity matches your GitHub account. Confirm the reward transfer to your connected wallet.
+                  The linked pull request has merged. Send the bounty reward directly to the contributor&apos;s recorded wallet address.
                 </p>
               </div>
               <button
@@ -660,36 +680,18 @@ export default function BountyDetailsPage() {
             </div>
 
             <div className="rounded-2xl border border-teal-500/20 bg-teal-500/5 p-4 text-sm text-slate-100">
-              <p className="font-semibold text-teal-200">Claim target wallet:</p>
-              <p className="mt-1 font-mono text-xs text-slate-300 break-all">{address || 'No wallet connected'}</p>
+              <p className="font-semibold text-teal-200">Contributor wallet:</p>
+              <p className="mt-1 font-mono text-xs text-slate-300 break-all">
+                {bounty.contributor || 'No contributor wallet found'}
+              </p>
             </div>
 
             <div className="flex flex-col gap-3">
               <Button
-                onClick={async () => {
-                  setShowClaimModal(false)
-                  if (!address) {
-                    alert('Please connect your wallet first to claim the bounty.')
-                    return
-                  }
-                  try {
-                    const res = await fetch(`/api/bounties/${bountyId}`, {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ action: 'pay' }),
-                    })
-                    const data = await res.json()
-                    if (!res.ok || !data.success) {
-                      throw new Error(data.error || 'Failed to claim bounty')
-                    }
-                    setBounty(data.bounty)
-                  } catch (err: any) {
-                    alert(err?.message || 'Failed to claim bounty. Please try again.')
-                  }
-                }}
+                onClick={handlePayContributor}
                 className="w-full py-3 text-xs bg-emerald-500 hover:bg-emerald-400 text-black"
               >
-                Confirm Claim to Connected Wallet
+                Send Reward to Contributor
               </Button>
               <Button
                 variant="outline"
