@@ -47,6 +47,8 @@ export default function BountyDetailsPage() {
   const [cancelling, setCancelling] = useState(false)
   const [simulating, setSimulating] = useState(false)
   const [simulateError, setSimulateError] = useState<string | null>(null)
+  const [prMerged, setPrMerged] = useState(false)
+  const [showClaimModal, setShowClaimModal] = useState(false)
 
   const fetchBounty = useCallback(async () => {
     try {
@@ -203,7 +205,18 @@ export default function BountyDetailsPage() {
         )
         const data = await res.json()
 
-        if (cancelled || !res.ok || !data.success || !data.pullRequest?.merged) {
+        if (cancelled || !res.ok || !data.success) {
+          return
+        }
+
+        if (data.pullRequest?.merged) {
+          setPrMerged(true)
+          if (isOwner) {
+            setShowClaimModal(true)
+          }
+        }
+
+        if (!data.pullRequest?.merged) {
           return
         }
 
@@ -251,6 +264,7 @@ export default function BountyDetailsPage() {
       }
 
       setBounty(data.bounty)
+      setShowClaimModal(true)
     } catch (err: any) {
       const message = err?.message || 'Failed to simulate payout.'
       setSimulateError(message)
@@ -388,7 +402,7 @@ export default function BountyDetailsPage() {
               </a>
               {bounty.status === 'linked' && isOwner && (
                 <div className="pt-2 space-y-2">
-                  <div className="flex justify-end">
+                  <div className="flex justify-end gap-2">
                     <Button
                       onClick={handleSimulatePayout}
                       size="sm"
@@ -398,6 +412,15 @@ export default function BountyDetailsPage() {
                       {simulating ? 'Simulating…' : 'Simulate PR Merge & Payout'}
                       <Send className="w-3.5 h-3.5 ml-1" />
                     </Button>
+                    {prMerged && (
+                      <Button
+                        onClick={() => setShowClaimModal(true)}
+                        size="sm"
+                        className="bg-teal-500 hover:bg-teal-400 text-black text-xs font-bold"
+                      >
+                        Claim Bounty
+                      </Button>
+                    )}
                   </div>
                   {simulateError && (
                     <p className="text-right text-xs text-rose-300">{simulateError}</p>
@@ -480,9 +503,27 @@ export default function BountyDetailsPage() {
                 )}
               </>
             ) : bounty.status === 'linked' ? (
-              <p className="text-xs text-slate-400">
-                A solution PR has been linked! Payout triggers automatically when merged on GitHub.
-              </p>
+              <>
+                <p className="text-xs text-slate-400">
+                  A solution PR has been linked! Payout triggers automatically when merged on GitHub.
+                </p>
+                {isOwner && prMerged && (
+                  <div className="rounded-2xl border border-teal-500/20 bg-teal-500/5 p-4 text-sm text-teal-100">
+                    <p className="font-semibold text-teal-200">Pull request merge detected.</p>
+                    <p className="text-slate-300 text-xs">
+                      Since you created this bounty, your wallet is automatically recognized and you can claim the escrow payout directly from the platform.
+                    </p>
+                    <div className="mt-3 flex gap-2">
+                      <Button
+                        onClick={() => setShowClaimModal(true)}
+                        className="w-full py-2 text-xs bg-teal-500 hover:bg-teal-400 text-black"
+                      >
+                        Claim Payout to Wallet
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
             ) : (
               <p className="text-xs text-slate-400">
                 This bounty is not currently available for PR submission.
@@ -596,6 +637,68 @@ export default function BountyDetailsPage() {
                 </Button>
               </div>
             </form>
+          </Card>
+        </div>
+      )}
+
+      {showClaimModal && (
+        <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
+          <Card className="w-full max-w-lg p-6 space-y-5 border-emerald-500/30 bg-slate-950">
+            <div className="flex items-start justify-between gap-4">
+              <div className="space-y-2">
+                <h3 className="text-lg font-bold text-white">Claim Your Bounty</h3>
+                <p className="text-sm text-slate-400">
+                  Your merged pull request was detected, and this bounty owner identity matches your GitHub account. Confirm the reward transfer to your connected wallet.
+                </p>
+              </div>
+              <button
+                onClick={() => setShowClaimModal(false)}
+                className="text-slate-400 hover:text-white text-xs font-bold"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="rounded-2xl border border-teal-500/20 bg-teal-500/5 p-4 text-sm text-slate-100">
+              <p className="font-semibold text-teal-200">Claim target wallet:</p>
+              <p className="mt-1 font-mono text-xs text-slate-300 break-all">{address || 'No wallet connected'}</p>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              <Button
+                onClick={async () => {
+                  setShowClaimModal(false)
+                  if (!address) {
+                    alert('Please connect your wallet first to claim the bounty.')
+                    return
+                  }
+                  try {
+                    const res = await fetch(`/api/bounties/${bountyId}`, {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ action: 'pay' }),
+                    })
+                    const data = await res.json()
+                    if (!res.ok || !data.success) {
+                      throw new Error(data.error || 'Failed to claim bounty')
+                    }
+                    setBounty(data.bounty)
+                  } catch (err: any) {
+                    alert(err?.message || 'Failed to claim bounty. Please try again.')
+                  }
+                }}
+                className="w-full py-3 text-xs bg-emerald-500 hover:bg-emerald-400 text-black"
+              >
+                Confirm Claim to Connected Wallet
+              </Button>
+              <Button
+                variant="outline"
+                className="w-full py-3 text-xs border-white/20 text-slate-300"
+                onClick={() => setShowClaimModal(false)}
+              >
+                Cancel
+              </Button>
+            </div>
           </Card>
         </div>
       )}
