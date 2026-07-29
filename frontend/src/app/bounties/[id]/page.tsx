@@ -47,6 +47,7 @@ export default function BountyDetailsPage() {
   const [cancelling, setCancelling] = useState(false)
   const [simulating, setSimulating] = useState(false)
   const [simulateError, setSimulateError] = useState<string | null>(null)
+  const [mergeCheckError, setMergeCheckError] = useState<string | null>(null)
   const [prMerged, setPrMerged] = useState(false)
   const [showClaimModal, setShowClaimModal] = useState(false)
 
@@ -210,9 +211,14 @@ export default function BountyDetailsPage() {
         )
         const data = await res.json()
 
-        if (cancelled || !res.ok || !data.success) {
+        if (cancelled) return
+
+        if (!res.ok || !data.success) {
+          setMergeCheckError(data?.error || 'Unable to verify PR merge status right now.')
           return
         }
+
+        setMergeCheckError(null)
 
         if (data.pullRequest?.merged) {
           setPrMerged(true)
@@ -222,7 +228,8 @@ export default function BountyDetailsPage() {
         }
 
         return
-      } catch (err) {
+      } catch (err: any) {
+        setMergeCheckError(err?.message || 'Failed to verify linked pull request merge status.')
         console.error('Failed to verify linked pull request merge status:', err)
       }
     }
@@ -427,32 +434,44 @@ export default function BountyDetailsPage() {
                   <div className="mt-1 font-mono break-all text-slate-300">{bounty.contributor}</div>
                 </div>
               )}
-              {bounty.status === 'linked' && isOwner && (
-                <>
-                  <div className="flex flex-col gap-2 sm:flex-row justify-end">
-                    <Button
-                      onClick={handleSimulatePayout}
-                      size="sm"
-                      disabled={simulating}
-                      className="bg-cyan-500 hover:bg-cyan-400 text-black text-xs font-bold"
-                    >
-                      {simulating ? 'Simulating…' : 'Simulate PR Merge & Payout'}
-                      <Send className="w-3.5 h-3.5 ml-1" />
-                    </Button>
-                    {prMerged && (
+
+              {bounty.status === 'linked' && (
+                <div className="mt-3 rounded-2xl border border-white/10 bg-white/5 p-3 space-y-3">
+                  <div className="flex items-center justify-between gap-3 text-xs">
+                    <span className="font-semibold text-slate-200">Merge status</span>
+                    <span className={`inline-flex items-center rounded-full px-2.5 py-1 font-mono ${prMerged ? 'bg-emerald-500/20 text-emerald-200' : 'bg-slate-700 text-slate-300'}`}>
+                      {prMerged ? 'Merged' : 'Pending Merge'}
+                    </span>
+                  </div>
+                  {mergeCheckError && (
+                    <p className="text-xs text-rose-300">{mergeCheckError}</p>
+                  )}
+                  {isOwner ? (
+                    <div className="flex flex-col gap-2 sm:flex-row justify-end">
+                      <Button
+                        onClick={handleSimulatePayout}
+                        size="sm"
+                        disabled={simulating}
+                        className="bg-cyan-500 hover:bg-cyan-400 text-black text-xs font-bold"
+                      >
+                        {simulating ? 'Checking…' : 'Verify PR Merge'}
+                        <Send className="w-3.5 h-3.5 ml-1" />
+                      </Button>
                       <Button
                         onClick={() => setShowClaimModal(true)}
                         size="sm"
-                        className="bg-teal-500 hover:bg-teal-400 text-black text-xs font-bold"
+                        disabled={!prMerged}
+                        className="bg-teal-500 hover:bg-teal-400 disabled:bg-slate-600 text-black text-xs font-bold"
                       >
-                        Pay Contributor
+                        {prMerged ? 'Release Payment' : 'Waiting for merge'}
                       </Button>
-                    )}
-                  </div>
-                  {simulateError && (
-                    <p className="text-right text-xs text-rose-300">{simulateError}</p>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-slate-400">
+                      Only the bounty owner can release this payout. Once the linked PR is merged, the owner can send the reward to the contributor.
+                    </p>
                   )}
-                </>
+                </div>
               )}
               {bounty.status === 'linked' && !isOwner && (
                 <p className="pt-2 text-right text-xs text-slate-400">
