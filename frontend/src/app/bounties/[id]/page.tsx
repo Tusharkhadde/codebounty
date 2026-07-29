@@ -45,6 +45,8 @@ export default function BountyDetailsPage() {
   const [linkError, setLinkError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [cancelling, setCancelling] = useState(false)
+  const [simulating, setSimulating] = useState(false)
+  const [simulateError, setSimulateError] = useState<string | null>(null)
 
   const fetchBounty = useCallback(async () => {
     try {
@@ -230,6 +232,9 @@ export default function BountyDetailsPage() {
   }, [bounty?.linked_pr_url, bounty?.status, bountyId])
 
   const handleSimulatePayout = async () => {
+    setSimulateError(null)
+    setSimulating(true)
+
     try {
       const res = await fetch(`/api/bounties/${bountyId}`, {
         method: 'POST',
@@ -238,11 +243,20 @@ export default function BountyDetailsPage() {
       })
 
       const data = await res.json()
-      if (data.success) {
-        setBounty(data.bounty)
+      if (!res.ok || !data.success) {
+        const message = data?.error || 'Failed to simulate payout.'
+        setSimulateError(message)
+        console.error(message)
+        return
       }
-    } catch (err) {
-      console.error(err)
+
+      setBounty(data.bounty)
+    } catch (err: any) {
+      const message = err?.message || 'Failed to simulate payout.'
+      setSimulateError(message)
+      console.error(message)
+    } finally {
+      setSimulating(false)
     }
   }
 
@@ -372,16 +386,28 @@ export default function BountyDetailsPage() {
                 <span className="truncate">{bounty.linked_pr_url}</span>
                 <ExternalLink className="w-3.5 h-3.5 shrink-0 ml-2" />
               </a>
-              {bounty.status === 'linked' && (
-                <div className="pt-2 flex justify-end">
-                  <Button
-                    onClick={handleSimulatePayout}
-                    size="sm"
-                    className="bg-cyan-500 hover:bg-cyan-400 text-black text-xs font-bold"
-                  >
-                    Simulate PR Merge & Payout <Send className="w-3.5 h-3.5 ml-1" />
-                  </Button>
+              {bounty.status === 'linked' && isOwner && (
+                <div className="pt-2 space-y-2">
+                  <div className="flex justify-end">
+                    <Button
+                      onClick={handleSimulatePayout}
+                      size="sm"
+                      disabled={simulating}
+                      className="bg-cyan-500 hover:bg-cyan-400 text-black text-xs font-bold"
+                    >
+                      {simulating ? 'Simulating…' : 'Simulate PR Merge & Payout'}
+                      <Send className="w-3.5 h-3.5 ml-1" />
+                    </Button>
+                  </div>
+                  {simulateError && (
+                    <p className="text-right text-xs text-rose-300">{simulateError}</p>
+                  )}
                 </div>
+              )}
+              {bounty.status === 'linked' && !isOwner && (
+                <p className="pt-2 text-right text-xs text-slate-400">
+                  Only the bounty owner can trigger this payout simulation. Payout also happens automatically when the linked PR is merged.
+                </p>
               )}
             </Card>
           )}
