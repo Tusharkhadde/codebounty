@@ -304,6 +304,65 @@ app.post('/events/bounty', (req: Request, res: Response) => {
   res.status(202).json({ status: 'broadcast' })
 })
 
+// Trigger a proof submission for a specific bounty+PR. Expects { bountyId, prUrl }
+app.post('/events/release', async (req: Request, res: Response) => {
+  const bountyId = Number(req.body?.bountyId)
+  const prUrl = typeof req.body?.prUrl === 'string' ? req.body.prUrl : undefined
+
+  if (!Number.isInteger(bountyId) || !prUrl) {
+    res.status(400).json({ error: 'bountyId and prUrl are required' })
+    return
+  }
+
+  try {
+    // Fetch PR details from GitHub to get merge commit SHA
+    const match = prUrl.trim().match(/^https:\/\/github\.com\/([^\/]+)\/([^\/]+)\/pull\/(\d+)\/?$/)
+    if (!match) {
+      res.status(400).json({ error: 'Invalid PR URL' })
+      return
+    }
+    const [, owner, repo, pullNumber] = match
+
+    const headers: Record<string, string> = {
+      Accept: 'application/vnd.github+json',
+      'User-Agent': 'CodeBounty-Relay',
+    }
+    if (process.env.GITHUB_PERSONAL_TOKEN) {
+      headers.Authorization = `Bearer ${process.env.GITHUB_PERSONAL_TOKEN}`
+    }
+
+    const ghRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/pulls/${pullNumber}`, { headers })
+    if (!ghRes.ok) {
+      res.status(502).json({ error: 'Failed to fetch PR from GitHub' })
+      return
+    }
+    const prData = await ghRes.json()
+    if (!prData.merged) {
+      res.status(409).json({ error: 'PR is not merged' })
+      return
+    }
+
+    const mergeCommitSha = prData.merge_commit_sha || ''
+
+    // Sign and submit proof
+    const signature = signAttestation(bountyId, prUrl, mergeCommitSha)
+    const ok = await submitProof(bountyId, prUrl, mergeCommitSha, signature)
+
+    if (!ok) {
+      res.status(500).json({ error: 'Relay failed to submit proof (possible replay)' })
+      return
+    }
+
+    // Broadcast update so frontends can react
+    broadcastBountyUpdate(bountyId, 'pull_request.merged')
+
+    res.status(200).json({ success: true })
+  } catch (err) {
+    console.error('[RELAY] /events/release error', err)
+    res.status(500).json({ error: 'Internal relay error' })
+  }
+})
+
 // --- Error handling middleware ---
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   console.error('[ERROR]', err)

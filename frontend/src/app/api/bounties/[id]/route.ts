@@ -120,6 +120,26 @@ export async function POST(request: NextRequest, { params }: { params: { id: str
       return NextResponse.json({ error: 'Claiming requires the stored contributor wallet address.' }, { status: 400 })
     }
 
+    // If a relay URL is configured, ask the relay to submit the merge proof and trigger the on-chain release.
+    const relayUrl = process.env.RELAY_URL || process.env.NEXT_PUBLIC_RELAY_URL
+    if (relayUrl) {
+      try {
+        const relayEndpoint = `${relayUrl.replace(/\/$/, '')}/events/release`
+        const relayRes = await fetch(relayEndpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ bountyId: bounty.id, prUrl: bounty.linked_pr_url }),
+        })
+        const relayData = await relayRes.json().catch(() => ({}))
+        if (!relayRes.ok || !relayData.success) {
+          return NextResponse.json({ error: `Relay rejected release request: ${relayData?.error || relayRes.statusText}` }, { status: 502 })
+        }
+      } catch (err) {
+        return NextResponse.json({ error: 'Failed to contact relay for on-chain release' }, { status: 502 })
+      }
+    }
+
+    // Mark local bounty as paid after relay/contract processed the on-chain release.
     bounty.status = 'paid'
     bounty.paid_at = Math.floor(Date.now() / 1000)
   }
