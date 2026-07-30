@@ -8,6 +8,8 @@ import { BountyStepper } from '@/components/BountyStepper'
 import { useWallet } from '@/contexts/WalletContext'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter, SheetClose } from '@/components/ui/sheet'
+import NotificationBar from '@/components/NotificationBar'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
@@ -50,6 +52,8 @@ export default function BountyDetailsPage() {
   const [mergeCheckError, setMergeCheckError] = useState<string | null>(null)
   const [prMerged, setPrMerged] = useState(false)
   const [showClaimModal, setShowClaimModal] = useState(false)
+  const [notification, setNotification] = useState<{ message: string; type?: 'info' | 'success' | 'error' } | null>(null)
+  const [showReauth, setShowReauth] = useState(false)
 
   const fetchBounty = useCallback(async () => {
     try {
@@ -307,12 +311,20 @@ export default function BountyDetailsPage() {
       })
       const data = await res.json()
       if (!res.ok || !data.success) {
-        throw new Error(data.error || 'Failed to release payment')
+        if (data?.reauthRequired) {
+          // prompt re-authentication with GitHub
+          setShowReauth(true)
+          return
+        }
+        setNotification({ message: data?.error || 'Failed to release payment', type: 'error' })
+        return
       }
+
+      setNotification({ message: 'Payout submitted — on-chain proof requested. Wait for confirmation.', type: 'success' })
       setBounty(data.bounty)
       setShowClaimModal(false)
     } catch (err: any) {
-      alert(err?.message || 'Failed to release payment. Please try again.')
+      setNotification({ message: err?.message || 'Failed to release payment. Please try again.', type: 'error' })
     }
   }
 
@@ -352,6 +364,26 @@ export default function BountyDetailsPage() {
 
   return (
     <div className="container-main py-10 space-y-8 max-w-4xl mx-auto">
+      {notification && (
+        <NotificationBar message={notification.message} type={notification.type} onClose={() => setNotification(null)} />
+      )}
+
+      <Sheet open={showReauth} onOpenChange={setShowReauth}>
+        <SheetContent side="bottom" showCloseButton={false}>
+          <SheetHeader>
+            <SheetTitle>Re-authentication required</SheetTitle>
+            <SheetDescription>To perform this sensitive action we need you to re-connect your GitHub account. Click the button below to re-authenticate.</SheetDescription>
+          </SheetHeader>
+          <SheetFooter>
+            <div className="flex gap-2 justify-end">
+              <a href={`/api/auth/github?next=/bounties/${bountyId}`} className="inline-block">
+                <Button className="bg-cyan-500 hover:bg-cyan-400 text-black">Re-authenticate with GitHub</Button>
+              </a>
+              <Button variant="ghost" onClick={() => setShowReauth(false)}>Cancel</Button>
+            </div>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
       {/* Top Header */}
       <div className="space-y-4">
         <Link
