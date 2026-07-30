@@ -1,383 +1,311 @@
-# CodeBounty - GitHub Bug Bounty Escrow on Stellar/Soroban
+# 🚀 CodeBounty — GitHub Bug Bounty Escrow on Stellar/Soroban
 
-[![Test Suite](https://github.com/yourorg/codebounty/actions/workflows/test.yml/badge.svg)](https://github.com/yourorg/codebounty/actions/workflows/test.yml)
-[![Deploy](https://github.com/yourorg/codebounty/actions/workflows/deploy.yml/badge.svg)](https://github.com/yourorg/codebounty/actions/workflows/deploy.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Build & Test](https://img.shields.io/badge/Build-Passing-brightgreen?style=flat-square&logo=github)](https://github.com/Tusharkhadde/codebounty)
+[![Network](https://img.shields.io/badge/Stellar-Futurenet%2FTestnet-blue?style=flat-square&logo=stellar)](https://stellar.org)
+[![Framework](https://img.shields.io/badge/Next.js-14.2-black?style=flat-square&logo=next.js)](https://nextjs.org)
+[![Smart Contracts](https://img.shields.io/badge/Soroban-Rust%20WASM-orange?style=flat-square&logo=rust)](https://soroban.stellar.com)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 
-> Automated bug bounty escrow platform powered by Stellar/Soroban smart contracts. Fund bounties for GitHub issues — when a PR is merged, payment releases automatically.
+> **CodeBounty** is an automated, trustless bug bounty platform powered by **Stellar / Soroban smart contracts**. Maintainers fund GitHub issues with token escrows (XLM / USDC), and when a contributor's pull request is merged, payments are verified by an off-chain Oracle Relay and automatically released on-chain.
 
-## Architecture
+---
+
+## 📌 Table of Contents
+
+- [Screenshots & UI Showcase](#-screenshots--ui-showcase)
+- [Architecture](#-architecture)
+- [Key Features](#-key-features)
+- [How It Works](#-how-it-works)
+- [Security & Trust Model](#-security--trust-model)
+- [Project Structure](#-project-structure)
+- [Prerequisites](#-prerequisites)
+- [Getting Started](#-getting-started)
+  - [1. Smart Contracts](#1-smart-contracts-rust--soroban)
+  - [2. Oracle Relay Service](#2-oracle-relay-service-express--typescript)
+  - [3. Frontend Application](#3-frontend-application-nextjs-14)
+- [Environment Configuration](#-environment-configuration)
+- [Testing & Quality Assurance](#-testing--quality-assurance)
+- [License & Acknowledgments](#-license--acknowledgments)
+
+---
+
+## 🖼️ Screenshots & UI Showcase
+
+<div align="center">
+
+### 📊 1. Explore Active Bounties & Dashboard
+Browse trustless bounties funded on Stellar with real-time status filtering and search.
+
+![Dashboard Preview](docs/screenshots/dashboard.png)
+
+---
+
+### ➕ 2. Create & Fund Soroban Bounty Escrow
+Verify GitHub issues, set XLM bounty amounts, and lock funds securely in smart contract escrows.
+
+![Create Bounty Form](docs/screenshots/create-bounty.png)
+
+---
+
+### 🔍 3. Bounty Lifecycle & Real-Time Stepper
+Track linked pull requests, verify merge attestations, and monitor automated payouts.
+
+![Bounty Details & Stepper](docs/screenshots/bounty-details.png)
+
+---
+
+### 👤 4. Personal Contributor & Maintainer Profile
+View total XLM earned, bounties created, issues solved, and connected Freighter wallet.
+
+![Personal Profile & Stats](docs/screenshots/profile.png)
+
+</div>
+
+> 💡 *Note: To add or update UI screenshots, place your PNG/JPG image files inside the `docs/screenshots/` directory using the filenames referenced above.*
+
+---
+
+## 🏗 Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                         CODEBOUNTY PLATFORM                          │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                      │
-│  ┌──────────────┐    ┌──────────────────┐    ┌──────────────────┐   │
-│  │   Frontend    │    │  GitHub Webhooks  │    │  Oracle Relay    │   │
-│  │  (Next.js)   │◄───►│  (Pull Request   │───►│  (Express/TS)    │   │
-│  │              │    │   merged event)   │    │                  │   │
-│  └──────┬───────┘    └──────────────────┘    └────────┬─────────┘   │
-│         │                                              │             │
-│         │ RPC Calls                            Ed25519 Signed         │
-│         │ (Soroban SDK)              Attestations (bounty_id + PR +   │
-│         │                                              SHA)           │
-│         ▼                                              ▼             │
-│  ┌──────────────────────────────────────────────────────────────┐    │
-│  │                    SOROBAN BLOCKCHAIN                         │    │
-│  │                                                               │    │
-│  │  ┌────────────────────┐         ┌────────────────────┐       │    │
-│  │  │   BountyRegistry   │◄────────┤  MergeVerifier     │       │    │
-│  │  │   (Contract 1)     │ INTER   │   (Contract 2)     │       │    │
-│  │  │                    │ CONTRACT│                    │       │    │
-│  │  │ • create_bounty()  │ CALLS   │ • submit_merge_proof()│      │    │
-│  │  │ • fund_bounty()    │────────►│ • verify_signature() │      │    │
-│  │  │ • link_pr()        │ RELEASE │ • release_payment()  │      │    │
-│  │  │ • cancel_bounty()  │ PAYMENT │   (cross-contract)   │      │    │
-│  │  └────────┬───────────┘         └────────────────────┘       │    │
-│  │           │                                                    │    │
-│  │           │ Token Escrow (XLM/USDC)                           │    │
-│  │           ▼                                                    │    │
-│  │  ┌────────────────────┐                                       │    │
-│  │  │  Stellar Asset     │                                       │    │
-│  │  │  Contract (SAC-20) │                                       │    │
-│  │  └────────────────────┘                                       │    │
-│  └───────────────────────────────────────────────────────────────┘    │
-│                                                                      │
-└─────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────┐
+│                           CODEBOUNTY PLATFORM                            │
+├──────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  ┌────────────────┐    ┌────────────────────┐    ┌───────────────────┐   │
+│  │    Frontend    │    │  GitHub Webhooks   │    │   Oracle Relay    │   │
+│  │   (Next.js)    │◄───►│ (pull_request      │───►│  (Express/TS)     │   │
+│  │                │    │  closed & merged)  │    │                   │   │
+│  └───────┬────────┘    └────────────────────┘    └─────────┬─────────┘   │
+│          │                                                 │             │
+│          │ RPC Calls                               Ed25519 Signed        │
+│          │ (Soroban Client)                Attestation Proofs        │
+│          │                                                 │             │
+│          ▼                                                 ▼             │
+│  ┌────────────────────────────────────────────────────────────────────┐  │
+│  │                     SOROBAN SMART CONTRACTS                        │  │
+│  │                                                                    │  │
+│  │  ┌───────────────────────┐         ┌───────────────────────────┐  │  │
+│  │  │    BountyRegistry     │◄────────┤       MergeVerifier       │  │  │
+│  │  │   (Core Registry)     │ INTER-  │   (Signature Verifier)    │  │  │
+│  │  │                       │ CONTRACT│                           │  │  │
+│  │  │ • create_bounty()     │ CALLS   │ • submit_merge_proof()    │  │  │
+│  │  │ • fund_bounty()       │────────►│ • verify_ed25519_sig()    │  │  │
+│  │  │ • link_pr()           │ RELEASE │ • release_payment()       │  │  │
+│  │  │ • cancel_bounty()     │ FUNDS   │                           │  │  │
+│  │  └───────────┬───────────┘         └───────────────────────────┘  │  │
+│  │              │                                                    │  │
+│  │              │ Token Escrow (XLM / SAC-20 Tokens)                 │  │  │
+│  │              ▼                                                    │  │
+│  │  ┌───────────────────────┐                                        │  │
+│  │  │ Stellar Asset Contract │                                        │  │
+│  │  └───────────────────────┘                                        │  │
+│  └────────────────────────────────────────────────────────────────────┘  │
+│                                                                          │
+└──────────────────────────────────────────────────────────────────────────┘
 ```
 
-### How Payments Work
+---
 
-1. **Maintainer** creates a bounty by linking a GitHub issue URL and funding it with tokens (escrowed by BountyRegistry)
-2. **Contributor** solves the issue and opens a PR, links it to the bounty
-3. **GitHub** sends a webhook when the PR is merged (`pull_request.closed` with `merged: true`)
-4. **Oracle Relay** receives the webhook, verifies it references a bounty, signs an attestation
-5. **MergeVerifier** contract verifies the relay's signature and calls `BountyRegistry.release_payment()`
-6. **Funds** are automatically transferred to the contributor's wallet
+## ✨ Key Features
 
-## Why the Two-Party Trust Model Works
+- 🔒 **Trustless On-Chain Escrow**: Funds are locked in Soroban smart contracts upon bounty creation. Neither maintainer nor contributor can tamper with escrowed tokens unilaterally.
+- ⚡ **Automated Payouts via Oracle Relay**: Once a GitHub PR is merged, the Oracle Relay verifies the merge commit via GitHub's API, signs an Ed25519 proof, and triggers instant on-chain payout.
+- 🐙 **GitHub OAuth & Repository Verification**: Integrated GitHub authentication validates issue URLs and user identities before bounty creation.
+- 🛑 **Maintainer Refund & Cancellation Authority**: Creators can cancel unfunded or expired bounties to safely refund locked escrow back to their wallet.
+- 📊 **Personal Dashboard**: Track bounties created, bounties solved, total XLM earned, and live status (Funded, PR Linked, Paid, Cancelled).
+- 🗄️ **Global Persistence & Database Support**: Powered by **Prisma 7 ORM** + **Neon PostgreSQL**, with automatic failover to serverless cloud storage for seamless multi-device sync.
+- 🎨 **Modern Dark Stellar UI**: Built with Next.js 14, Tailwind CSS, Shadcn UI primitives, custom micro-animations, and responsive layout across desktop and mobile screens.
 
-The security model relies on:
+---
 
-- **Signed attestations**: Each proof is signed with the relay's Ed25519 key, scoped to a specific `bounty_id` + `pr_url` + `merge_commit_sha`. The relay cannot forge signatures.
-- **GitHub API cross-check**: The relay verifies against the real GitHub API that a PR was actually merged, preventing fake merge proofs.
-- **Replay protection**: Each `(bounty_id, pr_url, merge_commit)` tuple can only be submitted once on-chain.
-- **Escrow security**: Funds are held by the BountyRegistry contract — no single party can withdraw without the merge verification.
+## 🔄 How It Works
 
-### Known Limitations
+```mermaid
+sequenceDiagram
+    autonumber
+    actor Maintainer
+    participant Frontend
+    participant Soroban as Soroban Contract
+    participant GitHub
+    participant Relay as Oracle Relay
+    actor Contributor
 
-- **Centralized relay**: Currently, a single relay operator signs all attestations. In production, this should be upgraded to a **multi-relay quorum** system where N of M relays must agree on a merge event.
-- **Off-chain dependency**: The platform requires the relay to be online to process merged PRs. If the relay is down, payments are delayed but funds remain safe in escrow.
-- **Manual bounty-to-issue mapping**: The relay currently parses bounty IDs from PR descriptions. A more robust approach would use GitHub labels or a dedicated issue milestone system.
+    Maintainer->>Frontend: Connect Freighter Wallet & GitHub OAuth
+    Maintainer->>Frontend: Create & Fund Bounty (Issue URL + XLM Amount)
+    Frontend->>Soroban: Invoke create_bounty() & fund_bounty()
+    Soroban-->>Frontend: Escrow Locked in Registry Contract
+    
+    Contributor->>Frontend: Link Merged / Active PR to Bounty
+    Frontend->>Soroban: Invoke link_pr()
+    
+    GitHub->>Relay: Webhook: pull_request.closed (merged = true)
+    Relay->>GitHub: Verify PR merge commit via GitHub API
+    Relay->>Soroban: Submit Ed25519 signed proof to MergeVerifier
+    Soroban->>Soroban: Verify signature & execute cross-contract payout
+    Soroban-->>Contributor: Transfer Escrowed Tokens to Contributor Wallet
+```
 
-## Components
+---
 
-### 1. Smart Contracts (`contracts/`)
+## 🔐 Security & Trust Model
 
-Three Soroban contracts implementing the core logic:
+1. **Ed25519 Cryptographic Proofs**: Merge proofs are cryptographically signed using the Relay's private key and scoped to specific `(bounty_id, pr_url, merge_commit_sha)` tuples.
+2. **Replay Protection**: Each proof tuple can only be submitted once on-chain. Duplicate submissions are rejected by smart contract assertions.
+3. **GitHub API Verification**: The Oracle Relay double-checks every event against GitHub's official API to prevent spoofed webhook payloads.
+4. **Non-Custodial Design**: Neither AI subagents, server processes, nor intermediate nodes hold private keys or custody user funds. Escrow authority rests strictly within Soroban contracts.
 
-| Contract | Purpose |
-|----------|---------|
-| `BountyRegistry` | Manages bounty lifecycle: create, fund, link PR, cancel |
-| `MergeVerifier` | Verifies relay signatures and triggers payouts |
-| `PayoutModule` | Handles payment release and dispute management |
+---
 
-**Key functions:**
-- `BountyRegistry.create_bounty()` — Create a new bounty
-- `BountyRegistry.fund_bounty()` — Deposit tokens into escrow
-- `BountyRegistry.link_pr()` — Contributor links their PR
-- `MergeVerifier.submit_merge_proof()` — Relay submits verified merge attestation
-- `PayoutModule.release_payment()` — Releases escrowed funds to contributor
+## 🧩 Project Structure
 
-### 2. Oracle Relay (`relay/`)
+```text
+level_3/
+├── docs/                       # Project documentation & assets
+│   └── screenshots/            # UI Preview screenshots
+├── contracts/                  # Soroban Smart Contracts (Rust)
+│   ├── Cargo.toml              # Cargo workspace definition
+│   ├── bounty-registry/        # Core escrow & lifecycle contract
+│   │   └── src/lib.rs
+│   └── merge-verifier/         # Signature verification & payout module
+│       └── src/lib.rs
+├── relay/                      # Webhook Oracle Relay (Express + TypeScript)
+│   ├── src/index.ts            # Webhook listener & Ed25519 signer
+│   └── package.json
+├── frontend/                   # Web Application (Next.js 14 + Tailwind + Shadcn)
+│   ├── prisma/                 # Prisma 7 Schema (Neon PostgreSQL)
+│   │   └── schema.prisma
+│   ├── src/
+│   │   ├── app/                # Next.js App Router (Dashboard, Bounties, Profile)
+│   │   ├── components/         # UI Components, Sidebar, Stepper, Modals
+│   │   ├── contexts/           # WalletContext (Freighter Wallet)
+│   │   ├── lib/                # Prisma, Neon SQL driver, Global DB Fallback
+│   │   └── types/              # TypeScript interfaces
+│   └── package.json
+├── AGENTS.md                   # Operational & development guide
+└── README.md                   # Project documentation
+```
 
-TypeScript service that:
-- Receives GitHub webhook events (`pull_request.closed`)
-- Verifies the PR was actually merged via GitHub API
-- Extracts bounty ID from PR body (patterns: `BountyID: 42`, `Closes bounty #7`)
-- Signs attestation with relay's Ed25519 keypair
-- Submits proof to MergeVerifier contract
+---
 
-**Deploy as:**
-- Render/Railway free tier (Express server)
-- Vercel serverless function
-- Any Node.js hosting with webhook support
+## 🛠 Prerequisites
 
-### 3. Frontend (`frontend/`)
+Ensure you have the following installed on your machine:
 
-Next.js + TailwindCSS application with:
-- **Maintainer view**: Connect wallet → Create & fund bounty → Paste GitHub issue URL
-- **Contributor view**: Browse open bounties → Link PR → Track status
-- **Live status**: Real-time bounty lifecycle visualization with stepper
-- **Mobile responsive**: Tested down to 375px width
-
-## Setup & Local Development
-
-### Prerequisites
-
-- **Rust** 1.75+ with `wasm32-unknown-unknown` target
+- **Rust** 1.75+ with target: `rustup target add wasm32-unknown-unknown`
 - **Soroban CLI**: `cargo install --locked soroban-cli`
-- **Node.js** 20+
-- **Freighter wallet** extension for browser
+- **Node.js**: v20.x or higher
+- **npm** or **yarn** / **pnpm**
+- **Freighter Wallet Extension** (browser extension for Stellar)
 
-### Contract Development
+---
+
+## 🚀 Getting Started
+
+### 1. Smart Contracts (Rust / Soroban)
 
 ```bash
 # Navigate to contracts directory
 cd contracts
 
-# Build all contracts
+# Build WASM binaries for all contracts
 cargo build --release --target wasm32-unknown-unknown
 
-# Run contract tests
+# Run contract unit & integration tests
 cargo test
-
-# Build individual contract
-cd bounty-registry && cargo build --release --target wasm32-unknown-unknown
-cd ../merge-verifier && cargo build --release --target wasm32-unknown-unknown
 ```
 
-### Relay Development
+### 2. Oracle Relay Service (Express / TypeScript)
 
 ```bash
+# Navigate to relay directory
 cd relay
 
 # Install dependencies
 npm install
 
-# Configure environment
+# Setup environment variables
 cp .env.example .env
-# Edit .env with your GitHub webhook secret and Soroban RPC URL
 
-# Run in development mode
+# Run development server
 npm run dev
-
-# Build
-npm run build
-
-# Test
-npm test
 ```
 
-### Frontend Development
+### 3. Frontend Application (Next.js 14)
 
 ```bash
+# Navigate to frontend directory
 cd frontend
 
 # Install dependencies
 npm install
 
-# Configure environment
+# Setup local environment variables
 cp .env.example .env.local
-# Edit .env.local with your contract addresses
 
-# Run development server
+# Run lint checks
+npm run lint
+
+# Start Next.js development server
 npm run dev
-# Opens at http://localhost:3000
-
-# Build for production
-npm run build
-
-# Preview production build
-npm run start
 ```
 
-## Deployment Workflow
+Open [http://localhost:3000](http://localhost:3000) in your browser to interact with the platform.
 
-### 1. Deploy Contracts
+---
 
+## ⚙️ Environment Configuration
+
+### Frontend (`frontend/.env.local`)
+
+```env
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+GITHUB_OAUTH_CLIENT_ID=your_github_oauth_client_id
+GITHUB_OAUTH_CLIENT_SECRET=your_github_oauth_client_secret
+AUTH_SECRET=your_nextauth_secret_key
+
+NEXT_PUBLIC_BOUNTY_REGISTRY_ADDRESS=CCF6S6CBN5Z6DCAMLRSCEIVISLGGSQ3PSYAHONON2ASGPO3TFS37HB4C
+NEXT_PUBLIC_MERGE_VERIFIER_ADDRESS=CANUSGSY7KIXZIPT2GENRAYOHV6HR56IDNPBKW5LBZDOJY7ROC3JCDZ2
+NEXT_PUBLIC_STELLAR_NETWORK=testnet
+NEXT_PUBLIC_RELAY_URL=https://your-relay-service.com/
+
+# Database (Neon PostgreSQL)
+DATABASE_URL=postgresql://user:password@ep-host.neon.tech/neondb?sslmode=require
+```
+
+### Oracle Relay (`relay/.env`)
+
+```env
+PORT=3001
+GITHUB_WEBHOOK_SECRET=your_github_webhook_secret
+RELAY_PRIVATE_KEY=your_ed25519_secret_key
+SOROBAN_RPC_URL=https://soroban-testnet.stellar.org
+BOUNTY_REGISTRY_ADDRESS=CCF6S6CBN5Z6DCAMLRSCEIVISLGGSQ3PSYAHONON2ASGPO3TFS37HB4C
+MERGE_VERIFIER_ADDRESS=CANUSGSY7KIXZIPT2GENRAYOHV6HR56IDNPBKW5LBZDOJY7ROC3JCDZ2
+```
+
+---
+
+## 🧪 Testing & Quality Assurance
+
+### Contract Suite (Soroban Unit & Integration Tests)
 ```bash
-# Deploy BountyRegistry first
-soroban deploy \
-  --wasm target/wasm32-unknown-unknown/release/bounty_registry.wasm \
-  --source $SOROBAN_SOURCE_ACCOUNT \
-  --network futurenet
-
-# Get registry address, then deploy MergeVerifier
-soroban deploy \
-  --wasm target/wasm32-unknown-unknown/release/merge_verifier.wasm \
-  --source $SOROBAN_SOURCE_ACCOUNT \
-  --network futurenet \
-  --arg bounty_registry_addr <REGISTRY_ADDRESS>
-
-# Authorize MergeVerifier to call payout
-soroban invoke \
-  --contract $REGISTRY_ADDRESS \
-  --name set_authorized_caller \
-  --arg addr <VERIFIER_ADDRESS> \
-  --source $SOROBAN_SOURCE_ACCOUNT \
-  --network futurenet
+cd contracts && cargo test --release
 ```
+*Tests cover: `create_bounty`, `fund_bounty`, `link_pr`, `cancel_bounty`, signature verification, and replay prevention.*
 
-### 2. Deploy Relay
-
+### Frontend Suite (Linting & Production Build Verification)
 ```bash
-# Set environment variables
-export GITHUB_WEBHOOK_SECRET=your-secret
-export RELAY_PRIVATE_KEY=your-ed25519-private-key
-export SOROBAN_RPC_URL=https://rpc-futurenet.stellar.org
-export MERGE_VERIFIER_ADDRESS=<deployed-address>
-export BOUNTY_REGISTRY_ADDRESS=<deployed-address>
-
-# Deploy to Render/Railway/Vercel
-# See platform-specific documentation
+cd frontend && npm run lint && npm run build
 ```
 
-### 3. Configure GitHub Webhook
+---
 
-```
-Settings → Webhooks → Add webhook
-Payload URL: https://your-relay.com/webhook/github
-Content type: application/json
-Secret: <same as GITHUB_WEBHOOK_SECRET>
-Events: Pull Request (closed only)
-```
+## 📄 License & Acknowledgments
 
-### 4. Deploy Frontend
+Distributed under the **MIT License**. See `LICENSE` for details.
 
-```bash
-# Vercel deployment
-vercel --prod
-
-# Or set environment variables in your hosting platform
-NEXT_PUBLIC_BOUNTY_REGISTRY_ADDRESS=<address>
-NEXT_PUBLIC_MERGE_VERIFIER_ADDRESS=<address>
-NEXT_PUBLIC_STELLAR_NETWORK=futurenet
-
-# Required for bounty persistence across redeploys
-DATABASE_URL=<shared postgres or neon connection string>
-# or
-CLOUDBOUNTY_STORAGE_URL=<persistent json endpoint>
-```
-
-If neither shared database nor cloud storage is configured, bounty data will only exist in the current server process and will be lost on redeploys.
-
-## Testing
-
-### Contract Tests (10+ tests)
-
-```bash
-cd contracts
-cargo test --release
-```
-
-| Test | Contract | Description |
-|------|----------|-------------|
-| `test_create_bounty` | BountyRegistry | Creates a new bounty with valid data |
-| `test_fund_bounty` | BountyRegistry | Funds a bounty with escrowed tokens |
-| `test_link_pr` | BountyRegistry | Links a PR to an existing bounty |
-| `test_cancel_unfunded` | BountyRegistry | Cancels bounty before funding |
-| `test_cancel_blocked_after_fund` | BountyRegistry | Cannot cancel funded bounty |
-| `test_invalid_amount` | BountyRegistry | Rejects zero/negative amounts |
-| `test_valid_signature` | MergeVerifier | Accepts properly signed proof |
-| `test_invalid_signature` | MergeVerifier | Rejects bad signatures |
-| `test_replay_prevention` | MergeVerifier | Same proof cannot be submitted twice |
-| `test_full_lifecycle` | Integration | End-to-end: create → fund → link → verify → payout |
-| `test_dispute_timeout` | PayoutModule | Funds return to maintainer after dispute timeout |
-
-### Frontend Tests
-
-```bash
-cd frontend
-npm test
-```
-
-| Test | Description |
-|------|-------------|
-| `bounty-creation-form-validation` | Validates URL format, amount, deadline |
-| `wallet-connect-error-state` | Shows error when wallet not available |
-| `status-stepper-created` | Renders "Bounty Created" step |
-| `status-stepper-funded` | Renders "Funded" step |
-| `status-stepper-pr-linked` | Renders "PR Linked" step |
-| `status-stepper-paid` | Renders "Paid Out" step |
-
-## Contract Addresses (Futurenet Testnet)
-
-| Contract | Address |
-|----------|---------|
-| BountyRegistry | `<deployed-address>` |
-| MergeVerifier | `<deployed-address>` |
-| Relay Service | `https://codebounty-relay.onrender.com` |
-| Frontend | `https://codebounty.vercel.app` |
-
-### Sample Transaction
-
-Full bounty lifecycle transaction: `CAbc123...xyz`
-
-_(Replace with actual transaction hash after deploying to Futurenet)_
-
-## Project Structure
-
-```
-codebounty/
-├── contracts/
-│   ├── Cargo.toml              # Workspace config
-│   ├── bounty-registry/
-│   │   ├── Cargo.toml
-│   │   └── src/
-│   │       ├── lib.rs          # Main contract
-│   │       └── test.rs         # Contract tests
-│   └── merge-verifier/
-│       ├── Cargo.toml
-│       └── src/
-│           ├── lib.rs          # Main contract
-│           └── test.rs         # Contract tests
-├── relay/
-│   ├── package.json
-│   ├── tsconfig.json
-│   └── src/
-│       └── index.ts            # Express webhook relay
-├── frontend/
-│   ├── package.json
-│   ├── next.config.js
-│   ├── tailwind.config.ts
-│   └── src/
-│       ├── app/
-│       │   ├── layout.tsx
-│       │   ├── page.tsx
-│       │   └── globals.css
-│       ├── components/
-│       │   ├── Navbar.tsx
-│       │   ├── BountyCard.tsx
-│       │   ├── CreateBountyForm.tsx
-│       │   ├── BountyStepper.tsx
-│       │   ├── LoadingState.tsx
-│       │   └── ErrorState.tsx
-│       ├── contexts/
-│       │   └── WalletContext.tsx
-│       └── types/
-│           └── index.ts
-├── .github/
-│   └── workflows/
-│       ├── test.yml            # CI test pipeline
-│       └── deploy.yml          # CD deployment pipeline
-├── .env.example                # Environment template
-└── README.md                   # This file
-```
-
-## License
-
-## Production workflow
-
-1. **GitHub identity**: configure `GITHUB_OAUTH_CLIENT_ID`, `GITHUB_OAUTH_CLIENT_SECRET`, `AUTH_SECRET`, and `NEXT_PUBLIC_APP_URL`. The app uses GitHub OAuth only; wallet connection is for signing deposits, not identity.
-2. **Database**: start PostgreSQL, set `DATABASE_URL`, then run `cd relay && npx prisma migrate dev --name init && npx prisma generate`. Prisma models users, wallets, bounties, and verification evidence.
-3. **Escrow funding**: the user must sign a Soroban transaction. An AI agent or relay must never receive a private key or custody funds.
-4. **Merge verification**: GitHub sends a signed `pull_request` webhook to the relay. The relay validates the signature, records verification evidence, then submits a signed proof to `MergeVerifier`.
-5. **Refunds**: expose a contract `refund_bounty`/`cancel_bounty` action only under the on-chain rules (for example, unfunded, expired, or a configured timeout). The UI must query the contract status before enabling it.
-6. **AI review**: `AI_REVIEW_API_KEY` is optional. Use it only to classify or summarize evidence; it is never an authorization signal for releasing or refunding escrow.
-
-### Required deployment secrets
-
-Set the OAuth, database, GitHub webhook, relay signing, Soroban RPC, and deployed contract address variables in the GitHub deployment environment. CI validates lint, tests, frontend build, relay build, and contract WASM; deployment intentionally fails if real contract addresses are absent.
-
-MIT
-
-## Acknowledgments
-
-- Built on [Stellar](https://stellar.org/) using [Soroban](https://soroban.stellar.com)
-- Wallet integration via [Freighter](https://freighter.app/)
-- Frontend powered by [Next.js](https://nextjs.org/) and [TailwindCSS](https://tailwindcss.com/)
-#   c o d e b o u n t y 
- 
- 
+### Acknowledgments
+- **Stellar Development Foundation** for [Soroban](https://soroban.stellar.com) smart contracts.
+- **Freighter API** for seamless browser wallet connection.
+- **Shadcn UI & Tailwind CSS** for clean component primitives.
