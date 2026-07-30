@@ -336,8 +336,8 @@ app.post('/events/release', async (req: Request, res: Response) => {
       res.status(502).json({ error: 'Failed to fetch PR from GitHub' })
       return
     }
-    const prData = await ghRes.json()
-    if (!prData.merged) {
+    const prData: any = await ghRes.json()
+    if (!prData?.merged) {
       res.status(409).json({ error: 'PR is not merged' })
       return
     }
