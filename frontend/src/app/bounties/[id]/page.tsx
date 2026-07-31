@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams } from 'next/navigation'
 import Link from 'next/link'
-import type { Bounty } from '@/types'
+import type { Bounty, StepperStep } from '@/types'
 import { BountyStepper } from '@/components/BountyStepper'
 import { useWallet } from '@/contexts/WalletContext'
 import { Button } from '@/components/ui/button'
@@ -53,7 +53,43 @@ export default function BountyDetailsPage() {
   const [prMerged, setPrMerged] = useState(false)
   const [showClaimModal, setShowClaimModal] = useState(false)
   const [notification, setNotification] = useState<{ message: string; type?: 'info' | 'success' | 'error' } | null>(null)
+  const [stepperStep, setStepperStep] = useState<StepperStep>('created')
   const [showReauth, setShowReauth] = useState(false)
+
+  const isOwner = !!(
+    bounty?.owner_github_login &&
+    githubUser &&
+    bounty.owner_github_login.toLowerCase() === githubUser.toLowerCase()
+  )
+
+  const isContributor = !!(
+    bounty?.contributor &&
+    address &&
+    bounty.contributor.toLowerCase() === address.toLowerCase()
+  )
+
+  const isPrVerified = prMerged || bounty?.status === 'verified' || bounty?.status === 'paid'
+
+  const refreshMergeStatus = useCallback(async (linkedPrUrl: string) => {
+    try {
+      const res = await fetch(`/api/github/pull-request?url=${encodeURIComponent(linkedPrUrl)}`, { cache: 'no-store' })
+      const data = await res.json()
+      if (!res.ok || !data.success) {
+        setMergeCheckError(data?.error || 'Unable to verify PR merge status right now.')
+        setPrMerged(false)
+        return
+      }
+
+      setMergeCheckError(null)
+      setPrMerged(Boolean(data.pullRequest?.merged))
+      if (data.pullRequest?.merged && (isOwner || isContributor)) {
+        setShowClaimModal(true)
+      }
+    } catch (err: any) {
+      setMergeCheckError(err?.message || 'Failed to verify linked pull request merge status.')
+      setPrMerged(false)
+    }
+  }, [isOwner, isContributor])
 
   const fetchBounty = useCallback(async () => {
     try {
@@ -64,6 +100,9 @@ export default function BountyDetailsPage() {
 
       if (res.ok && data.success && data.bounty) {
         setBounty(data.bounty)
+        if (data.bounty.linked_pr_url) {
+          await refreshMergeStatus(data.bounty.linked_pr_url)
+        }
         return
       }
 
@@ -73,13 +112,46 @@ export default function BountyDetailsPage() {
     } finally {
       setLoading(false)
     }
-  }, [bountyId])
+  }, [bountyId, refreshMergeStatus])
 
   useEffect(() => {
     if (bountyId) {
       fetchBounty()
     }
   }, [bountyId, fetchBounty])
+
+  useEffect(() => {
+    if (!bounty) return
+    setStepperStep(mapStatusToStepper(bounty.status, Boolean(bounty.linked_pr_url), prMerged))
+  }, [bounty, prMerged])
+
+  useEffect(() => {
+    if (!bounty?.linked_pr_url) return
+
+    let cancelled = false
+    const poll = async () => {
+      if (cancelled) return
+      const linkedPrUrl = bounty.linked_pr_url
+      if (!linkedPrUrl) return
+      await refreshMergeStatus(linkedPrUrl)
+    }
+
+    poll()
+    const intervalId = window.setInterval(poll, 30000)
+
+    return () => {
+      cancelled = true
+      window.clearInterval(intervalId)
+    }
+  }, [bounty?.linked_pr_url, refreshMergeStatus])
+
+  function mapStatusToStepper(status: string, hasPr: boolean, merged: boolean): StepperStep {
+    if (status === 'paid') return 'paid'
+    if (status === 'verified' || (hasPr && merged)) return 'verified'
+    if (status === 'linked') return 'pr_linked'
+    if (status === 'funded') return 'funded'
+    return 'created'
+  }
 
   useEffect(() => {
     const fetchGithubUser = async () => {
@@ -166,18 +238,6 @@ export default function BountyDetailsPage() {
     }
   }
 
-  const isOwner = !!(
-    bounty?.owner_github_login &&
-    githubUser &&
-    bounty.owner_github_login.toLowerCase() === githubUser.toLowerCase()
-  )
-
-  const isContributor = !!(
-    bounty?.contributor &&
-    address &&
-    bounty.contributor.toLowerCase() === address.toLowerCase()
-  )
-
   const handleCancelBounty = async () => {
     if (!confirm('Are you sure you want to cancel this bounty and refund the escrow funds back to your wallet?')) return
     setCancelling(true)
@@ -206,52 +266,6 @@ export default function BountyDetailsPage() {
       window.location.href = '/bounties'
     } catch (e) {}
   }
-
-  useEffect(() => {
-    const linkedPrUrl = bounty?.linked_pr_url
-    if (!linkedPrUrl || bounty.status !== 'linked') return
-
-    let cancelled = false
-
-    const verifyMergeStatus = async () => {
-      try {
-        const res = await fetch(
-          `/api/github/pull-request?url=${encodeURIComponent(linkedPrUrl)}`,
-          { cache: 'no-store' }
-        )
-        const data = await res.json()
-
-        if (cancelled) return
-
-        if (!res.ok || !data.success) {
-          setMergeCheckError(data?.error || 'Unable to verify PR merge status right now.')
-          return
-        }
-
-        setMergeCheckError(null)
-
-        if (data.pullRequest?.merged) {
-          setPrMerged(true)
-          if (isOwner || isContributor) {
-            setShowClaimModal(true)
-          }
-        }
-
-        return
-      } catch (err: any) {
-        setMergeCheckError(err?.message || 'Failed to verify linked pull request merge status.')
-        console.error('Failed to verify linked pull request merge status:', err)
-      }
-    }
-
-    verifyMergeStatus()
-    const intervalId = window.setInterval(verifyMergeStatus, 30000)
-
-    return () => {
-      cancelled = true
-      window.clearInterval(intervalId)
-    }
-  }, [bounty?.linked_pr_url, bounty?.status, bountyId, isOwner])
 
   const handleSimulatePayout = async () => {
     setSimulateError(null)
@@ -291,7 +305,7 @@ export default function BountyDetailsPage() {
 
   const handleReleasePayment = async () => {
     if (!bounty?.contributor) {
-      alert('No contributor wallet address is available for payout.')
+      setNotification({ message: 'No contributor wallet address is available for payout.', type: 'error' })
       return
     }
 
@@ -423,7 +437,7 @@ export default function BountyDetailsPage() {
 
       {/* Bounty Stepper Component */}
       <Card className="p-6 border-white/10 bg-white/[0.02]">
-        <BountyStepper currentStep={bounty.status as any} bountyId={bounty.id} />
+        <BountyStepper currentStep={stepperStep} bountyId={bounty.id} />
       </Card>
 
       {/* Main Grid: Details + Action Sidebar */}
@@ -457,12 +471,13 @@ export default function BountyDetailsPage() {
           {/* Linked PR Section if PR exists */}
           {bounty.linked_pr_url && (
             <Card className="p-6 border-cyan-500/30 bg-cyan-500/[0.03] space-y-4 animate-fade-in">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-bold text-cyan-300 flex items-center gap-2">
-                  <GitPullRequest className="w-4 h-4" /> Submitted Pull Request
-                </h3>
-                <span className="text-xs px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-200 font-mono">
-                  Pending Verification
+              <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <GitPullRequest className="w-4 h-4" />
+                  <h3 className="text-sm font-bold text-cyan-300">Submitted Pull Request</h3>
+                </div>
+                        <span className={`text-xs px-2 py-0.5 rounded font-mono ${isPrVerified ? 'bg-emerald-500/20 text-emerald-200' : 'bg-cyan-500/20 text-cyan-200'}`}>
+                  {isPrVerified ? 'Merged' : 'Pending Verification'}
                 </span>
               </div>
               <a
@@ -485,8 +500,8 @@ export default function BountyDetailsPage() {
                 <div className="mt-3 rounded-2xl border border-white/10 bg-white/5 p-3 space-y-3">
                   <div className="flex items-center justify-between gap-3 text-xs">
                     <span className="font-semibold text-slate-200">Merge status</span>
-                    <span className={`inline-flex items-center rounded-full px-2.5 py-1 font-mono ${prMerged ? 'bg-emerald-500/20 text-emerald-200' : 'bg-slate-700 text-slate-300'}`}>
-                      {prMerged ? 'Merged' : 'Pending Merge'}
+                    <span className={`inline-flex items-center rounded-full px-2.5 py-1 font-mono ${isPrVerified ? 'bg-emerald-500/20 text-emerald-200' : 'bg-slate-700 text-slate-300'}`}>
+                      {isPrVerified ? 'Merged' : 'Pending Merge'}
                     </span>
                   </div>
                   {mergeCheckError && (
@@ -506,10 +521,10 @@ export default function BountyDetailsPage() {
                       <Button
                         onClick={() => setShowClaimModal(true)}
                         size="sm"
-                        disabled={!prMerged}
+                        disabled={!isPrVerified}
                         className="bg-teal-500 hover:bg-teal-400 disabled:bg-slate-600 text-black text-xs font-bold"
                       >
-                        {prMerged ? 'Release Payment' : 'Waiting for merge'}
+                        {isPrVerified ? 'Release Payment' : 'Waiting for merge'}
                       </Button>
                     </div>
                   ) : isContributor ? (
@@ -517,10 +532,10 @@ export default function BountyDetailsPage() {
                       <Button
                         onClick={() => setShowClaimModal(true)}
                         size="sm"
-                        disabled={!prMerged}
+                        disabled={!isPrVerified}
                         className="bg-emerald-500 hover:bg-emerald-400 disabled:bg-slate-600 text-black text-xs font-bold"
                       >
-                        {prMerged ? 'Claim Reward' : 'Waiting for merge'}
+                        {isPrVerified ? 'Claim Reward' : 'Waiting for merge'}
                       </Button>
                     </div>
                   ) : (
@@ -605,7 +620,7 @@ export default function BountyDetailsPage() {
                 <p className="text-xs text-slate-400">
                   A solution PR has been linked! Payout triggers automatically when merged on GitHub.
                 </p>
-                {isOwner && prMerged && (
+                {isOwner && isPrVerified && (
                   <div className="rounded-2xl border border-teal-500/20 bg-teal-500/5 p-4 text-sm text-teal-100">
                     <p className="font-semibold text-teal-200">Pull request merge detected.</p>
                     <p className="text-slate-300 text-xs">
