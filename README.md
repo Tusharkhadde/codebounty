@@ -54,7 +54,14 @@ Track linked pull requests, verify merge attestations, and monitor automated pay
 
 ---
 
-### 👤 4. Personal Contributor & Maintainer Profile
+### � 4. About Page Overview
+A clean project landing section that explains CodeBounty's trustless escrow model, instant payout flow, and open-source nature with a concise step-by-step onboarding guide.
+
+![About Page Screenshot](docs/screenshots/about-page.png)
+
+---
+
+### 👤 5. Personal Contributor & Maintainer Profile
 View total XLM earned, bounties created, issues solved, and connected Freighter wallet.
 
 ![Personal Profile & Stats](docs/screenshots/profile.png)
