@@ -31,6 +31,5 @@ npm-debug.log*
 *.contract
 
 # Cargo
-Cargo.lock
 .agents
 frontend/.local-testcases/

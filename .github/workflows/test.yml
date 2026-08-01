@@ -41,7 +41,7 @@ jobs:
           path: |
             ~/.local/share/soroban
             target/
-          key: soroban-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          key: soroban-v2-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
 
       - name: Build contracts
         run: |
