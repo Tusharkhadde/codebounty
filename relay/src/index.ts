@@ -85,7 +85,7 @@ interface GitHubPullRequestEvent {
   }
 }
 
-interface GitHubIssueEvent {
+export interface GitHubIssueEvent {
   action: 'closed'
   issue: {
     number: number
@@ -316,7 +316,7 @@ app.post('/events/release', async (req: Request, res: Response) => {
 
   try {
     // Fetch PR details from GitHub to get merge commit SHA
-    const match = prUrl.trim().match(/^https:\/\/github\.com\/([^\/]+)\/([^\/]+)\/pull\/(\d+)\/?$/)
+    const match = prUrl.trim().match(/^https:\/\/github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)\/?$/)
     if (!match) {
       res.status(400).json({ error: 'Invalid PR URL' })
       return
