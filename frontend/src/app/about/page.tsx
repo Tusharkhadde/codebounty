@@ -1,51 +1,90 @@
-'use client'
+import Image from 'next/image'
+import Link from 'next/link'
+import { ArrowRight } from 'lucide-react'
+
+const steps = [
+  {
+    title: 'Open a GitHub issue',
+    body: 'Describe the bug or feature in the repository you already maintain.',
+  },
+  {
+    title: 'Create and fund the bounty',
+    body: 'Paste the issue URL, set a reward, and lock funds in Stellar escrow.',
+  },
+  {
+    title: 'Link the pull request',
+    body: 'A contributor attaches the PR that solves the issue.',
+  },
+  {
+    title: 'Verify the merge and release',
+    body: 'After the PR merges, the relay can verify the work and the payout can proceed.',
+  },
+]
 
 export default function AboutPage() {
   return (
-    <div className="container-main py-10 space-y-10">
-      <header className="max-w-3xl">
-        <h1 className="heading-lg mb-3">About CodeBounty</h1>
-        <p className="text-gray-400 leading-relaxed">
-          CodeBounty transforms open source collaboration with trustless bounties.
-          Fund GitHub issues, verify merges, and reward contributors—all powered by
-          Soroban smart contracts on Stellar&apos;s Futurenet.
+    <div className="bg-black">
+      <section className="container-main py-14 sm:py-20">
+        <p className="text-sm font-medium text-zinc-500">How it works</p>
+        <h1 className="mt-3 max-w-3xl text-4xl font-semibold tracking-tight sm:text-5xl">
+          A clear path from issue to payout.
+        </h1>
+        <p className="mt-5 max-w-2xl text-base leading-7 text-zinc-400">
+          CodeBounty is a GitHub bounty board with Stellar escrow. Watch the landing demo for the
+          path from issue to payout, then open the app to browse or create work.
         </p>
-      </header>
-
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        {[
-          {
-            icon: '🔒',
-            title: 'Trustless Escrow',
-            desc: 'Funds are locked in a Soroban contract, not held by a middleman.',
-          },
-          {
-            icon: '⚡',
-            title: 'Instant Payout',
-            desc: 'When a linked pull request merges, payment releases automatically.',
-          },
-          {
-            icon: '🌐',
-            title: 'Open Source',
-            desc: 'Built for the community, verifiable on-chain and on GitHub.',
-          },
-        ].map(s => (
-          <div key={s.title} className="glass-card p-6 animate-fade-in-up">
-            <div className="text-3xl mb-3">{s.icon}</div>
-            <h3 className="font-semibold mb-1">{s.title}</h3>
-            <p className="text-sm text-gray-400">{s.desc}</p>
-          </div>
-        ))}
+        <div className="mt-8 flex flex-wrap gap-3">
+          <Link href="/bounties" className="btn-primary h-11 px-5">
+            Open the bounty board
+            <ArrowRight className="h-4 w-4" />
+          </Link>
+          <Link href="/bounties/create" className="btn-secondary h-11 px-5">
+            Create a bounty
+          </Link>
+        </div>
       </section>
 
-      <section className="glass-card p-8 max-w-3xl">
-        <h2 className="heading-md mb-3">How it works</h2>
-        <ol className="space-y-3 text-sm text-gray-400 list-decimal list-inside">
-          <li>Open a GitHub issue describing the bug or feature.</li>
-          <li>Fund the bounty—funds lock in a Stellar smart contract escrow.</li>
-          <li>Contributors submit pull requests linked to the issue.</li>
-          <li>Funds release instantly when the PR is merged and verified.</li>
+      <section className="container-main grid gap-4 pb-16 md:grid-cols-2">
+        <div className="relative min-h-[240px] overflow-hidden rounded-2xl border border-zinc-800">
+          <Image
+            src="/landing/ui-escrow-funded.png"
+            alt="Funded bounty with locked Stellar escrow"
+            fill
+            sizes="(min-width: 768px) 50vw, 100vw"
+            className="object-cover"
+          />
+        </div>
+        <div className="relative min-h-[240px] overflow-hidden rounded-2xl border border-zinc-800">
+          <Image
+            src="/landing/ui-pr-paid.png"
+            alt="Merged pull request with payout released"
+            fill
+            sizes="(min-width: 768px) 50vw, 100vw"
+            className="object-cover"
+          />
+        </div>
+      </section>
+
+      <section className="container-main pb-20">
+        <ol className="grid gap-4 md:grid-cols-2">
+          {steps.map((step, index) => (
+            <li key={step.title} className="rounded-2xl border border-zinc-800 bg-zinc-950 p-6">
+              <p className="text-xs uppercase tracking-[0.16em] text-zinc-500">
+                Step {String(index + 1).padStart(2, '0')}
+              </p>
+              <h2 className="mt-3 text-lg font-medium">{step.title}</h2>
+              <p className="mt-2 text-sm leading-6 text-zinc-400">{step.body}</p>
+            </li>
+          ))}
         </ol>
+        <div className="mt-10 flex flex-wrap gap-3">
+          <Link href="/login" className="btn-primary h-11 px-5">
+            Sign in with GitHub
+          </Link>
+          <Link href="/" className="btn-secondary h-11 px-5">
+            Back to landing
+          </Link>
+        </div>
       </section>
     </div>
   )
