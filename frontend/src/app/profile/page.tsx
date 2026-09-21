@@ -19,8 +19,7 @@ import {
   Bell,
   Code2,
   CheckCircle2,
-  Clock,
-  Sparkles
+  Clock
 } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import { useWallet } from '@/contexts/WalletContext'
@@ -44,12 +43,12 @@ function ProfileContent() {
 
   // User Profile details from local storage or defaults
   const [userProfile, setUserProfile] = useState({
-    username: 'stellar_developer',
-    email: 'developer@stellar.org',
-    role: 'Hunter / Developer',
+    username: '',
+    email: '',
+    role: 'Contributor',
     githubLinked: false,
-    githubUser: 'octocat',
-    registeredAt: 'July 2026'
+    githubUser: '',
+    registeredAt: ''
   })
 
   useEffect(() => {
@@ -59,16 +58,14 @@ function ProfileContent() {
     const fetchSession = async () => {
       try {
         const res = await fetch('/api/auth/me')
-        if (res.ok) {
-          const data = await res.json()
-          if (data.authenticated && data.user) {
-            setUserProfile(prev => ({
-              ...prev,
-              username: data.user.login,
-              githubUser: data.user.login,
-              githubLinked: true
-            }))
-          }
+        const data = await res.json()
+        if (data.authenticated && data.user) {
+          setUserProfile(prev => ({
+            ...prev,
+            username: data.user.login,
+            githubUser: data.user.login,
+            githubLinked: true
+          }))
         }
       } catch (err) {
         console.error('Failed to fetch session', err)
@@ -83,7 +80,10 @@ function ProfileContent() {
         setUserProfile(prev => ({
           ...prev,
           email: parsed.email || prev.email,
-          role: parsed.role === 'sponsor' ? 'Sponsor / Project Lead' : 'Hunter / Developer'
+          role: parsed.role === 'sponsor' ? 'Sponsor / Project Lead' : parsed.role === 'developer' ? 'Hunter / Developer' : prev.role,
+          registeredAt: parsed.registeredAt
+            ? new Date(parsed.registeredAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
+            : prev.registeredAt
         }))
       } catch (e) {
         // ignore
@@ -146,9 +146,11 @@ function ProfileContent() {
         {/* Decorative Top Gradient Cover */}
         <div className="h-32 bg-gradient-to-r from-teal-500/20 via-cyan-500/20 to-emerald-500/20 relative">
           <div className="absolute right-6 top-6 flex gap-2">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-teal-300/30 bg-black/40 px-3 py-1 text-xs text-teal-300 backdrop-blur-md">
-              <ShieldCheck className="h-3.5 w-3.5" /> Identity Verified
+            {userProfile.githubLinked && (
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-zinc-600 bg-black/40 px-3 py-1 text-xs text-zinc-200 backdrop-blur-md">
+              <ShieldCheck className="h-3.5 w-3.5" /> GitHub linked
             </span>
+            )}
           </div>
         </div>
 
@@ -157,24 +159,32 @@ function ProfileContent() {
           <div className="flex flex-col sm:flex-row items-start sm:items-end gap-5 -mt-12">
             <div className="h-24 w-24 rounded-2xl bg-gradient-to-br from-teal-400 to-cyan-600 p-1 shadow-xl shadow-teal-500/20 ring-4 ring-[#06080d]">
               <div className="h-full w-full rounded-[0.85rem] bg-surface flex items-center justify-center text-3xl font-bold text-teal-300">
-                {userProfile.username.charAt(0).toUpperCase()}
+                {userProfile.username.charAt(0).toUpperCase() || '?'}
               </div>
             </div>
 
             <div className="space-y-1">
               <div className="flex items-center gap-3 flex-wrap">
-                <h1 className="heading-md font-bold">{userProfile.username}</h1>
+                <h1 className="heading-md font-bold">{userProfile.githubLinked ? userProfile.username : 'Not signed in'}</h1>
                 <span className="rounded-full bg-teal-400/10 border border-teal-300/20 px-3 py-0.5 text-xs font-semibold text-teal-300">
                   {userProfile.role}
                 </span>
               </div>
-              <p className="text-xs text-slate-400 font-mono">{userProfile.email}</p>
+              {userProfile.email && <p className="text-xs text-slate-400 font-mono">{userProfile.email}</p>}
               <div className="flex items-center gap-4 text-xs text-slate-400 pt-1">
-                <span className="flex items-center gap-1">
-                  <Github className="h-3.5 w-3.5 text-slate-300" /> @{userProfile.githubUser}
-                </span>
-                <span>•</span>
-                <span>Member since {userProfile.registeredAt}</span>
+                {userProfile.githubLinked ? (
+                  <span className="flex items-center gap-1">
+                    <Github className="h-3.5 w-3.5 text-slate-300" /> @{userProfile.githubUser}
+                  </span>
+                ) : (
+                  <Link href="/login" className="text-zinc-200 hover:text-white">Sign in with GitHub</Link>
+                )}
+                {userProfile.registeredAt && (
+                  <>
+                    <span>•</span>
+                    <span>Joined {userProfile.registeredAt}</span>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -243,11 +253,11 @@ function ProfileContent() {
 
         <div className="glass-card p-5 space-y-1">
           <div className="flex items-center justify-between text-slate-400">
-            <span className="text-xs font-semibold uppercase tracking-wider">Trust Rating</span>
-            <Sparkles className="h-4 w-4 text-amber-400" />
+            <span className="text-xs font-semibold uppercase tracking-wider">GitHub</span>
+            <Github className="h-4 w-4 text-zinc-400" />
           </div>
-          <p className="text-2xl font-bold text-white font-mono">100%</p>
-          <p className="text-[11px] text-slate-400 font-medium">Soroban Verified</p>
+          <p className="text-2xl font-bold text-white font-mono">{userProfile.githubLinked ? 'Linked' : 'Off'}</p>
+          <p className="text-[11px] text-slate-400 font-medium">{userProfile.githubLinked ? 'Session verified' : 'Sign in to verify'}</p>
         </div>
       </section>
 
