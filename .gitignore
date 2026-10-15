@@ -1,4 +1,4 @@
-dropdown menu any  # Build artifacts
+# Build artifacts
 contracts/target/
 frontend/.next/
 frontend/node_modules/
@@ -33,3 +33,8 @@ npm-debug.log*
 # Cargo
 .agents
 frontend/.local-testcases/
+# Local build/test/lint output and coverage (never commit: they contain local paths)
+frontend/build-output.txt
+frontend/test-output.txt
+frontend/lint-output.txt
+**/coverage/
