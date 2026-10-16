@@ -10,6 +10,31 @@ export function formatXLM(amount: number): string {
 }
 
 /**
+ * Format an amount with its token. Bounties without a stored token predate
+ * token selection and were XLM. USDC is shown first-class because it is the
+ * default: developers think in dollars.
+ */
+export function formatTokenAmount(amount: number, token?: string | null): string {
+  const symbol = (token || 'XLM').toUpperCase()
+  if (symbol === 'XLM') return formatXLM(amount)
+  const digits = symbol === 'USDC' ? 2 : 7
+  return `${amount.toLocaleString('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: digits,
+    useGrouping: false,
+  })} ${symbol}`
+}
+
+/**
+ * Approximate USD value for stablecoin amounts (USDC is 1:1 with USD).
+ * Returns null for volatile assets like XLM, where we don't show a guess.
+ */
+export function usdHint(amount: number, token?: string | null): string | null {
+  if ((token || '').toUpperCase() !== 'USDC') return null
+  return `≈ $${amount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`
+}
+
+/**
  * Format number with abbreviation (K, M, B)
  */
 export function formatNumber(num: number): string {

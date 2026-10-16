@@ -1,6 +1,6 @@
 # 🚀 CodeBounty — GitHub Bug Bounty Escrow on Stellar / Soroban
 
-Live Demo: [https://codebounty-nine.vercel.app](https://codebounty-nine.vercel.app)
+Live Demo (testnet): [https://codebounty-nine.vercel.app](https://codebounty-nine.vercel.app)
 <div align="center">
 
 [![Build & Test](https://img.shields.io/badge/Build-Passing-brightgreen?style=flat-square&logo=github)](https://github.com/Tusharkhadde/codebounty)
@@ -10,8 +10,8 @@ Live Demo: [https://codebounty-nine.vercel.app](https://codebounty-nine.vercel.a
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 [![Live Demo](https://img.shields.io/badge/Live-Demo-purple?style=flat-square&logo=vercel)](https://codebounty-nine.vercel.app)
 
-**CodeBounty** is a trustless bug bounty platform powered by **Stellar / Soroban smart contracts**.  
-Maintainers fund GitHub issues with XLM / USDC escrow. When a contributor's PR is merged, the Oracle Relay automatically verifies the merge and releases the on-chain payment — no middlemen, no trust required.
+**CodeBounty** is an on-chain bug bounty escrow for GitHub issues, powered by **Stellar / Soroban smart contracts**.  
+Maintainers fund GitHub issues with USDC or XLM. When a contributor's PR is merged, the Oracle Relay verifies the merge with GitHub and signs a proof that releases the on-chain payment. Funds sit in the contract, not in anyone's wallet; the relay is a trusted verifier (see [Security & Trust Model](#-security--trust-model)).
 
 [Live Demo](https://codebounty-nine.vercel.app) · [Report Bug](https://github.com/Tusharkhadde/codebounty/issues) · [Request Feature](https://github.com/Tusharkhadde/codebounty/issues)
 
@@ -50,7 +50,7 @@ Maintainers fund GitHub issues with XLM / USDC escrow. When a contributor's PR i
 
 The landing page explains the 3-step bounty workflow in a clean, dark interface. New users can connect their Freighter wallet or explore in demo mode from here.
 
-![Overview — Landing page showing the hero, 3-step workflow card, and sidebar navigation](Screenshot%202026-07-31%20090009.png)
+![Overview — Landing page showing the hero, 3-step workflow card, and sidebar navigation](docs/screenshots/screenshot-2026-07-31-090009.png)
 
 ---
 
@@ -58,7 +58,7 @@ The landing page explains the 3-step bounty workflow in a clean, dark interface.
 
 Before creating a bounty, users authenticate via **GitHub OAuth**. The sign-in page outlines the platform's core value props: linked GitHub PRs, non-custodial wallet signatures, and verifiable payout addresses.
 
-![GitHub OAuth sign-in page with "Continue with GitHub" button](Screenshot%202026-07-31%20090427.png)
+![GitHub OAuth sign-in page with "Continue with GitHub" button](docs/screenshots/screenshot-2026-07-31-090427.png)
 
 ---
 
@@ -66,7 +66,7 @@ Before creating a bounty, users authenticate via **GitHub OAuth**. The sign-in p
 
 When a user navigates to **Create Bounty**, the platform first verifies both their GitHub identity and Stellar wallet. A live connection status shows which steps are complete before unlocking the bounty creation form.
 
-![Create Bounty page showing GitHub account verified and Stellar wallet connect prompt](Screenshot%202026-07-31%20090102.png)
+![Create Bounty page showing GitHub account verified and Stellar wallet connect prompt](docs/screenshots/screenshot-2026-07-31-090102.png)
 
 ---
 
@@ -74,7 +74,7 @@ When a user navigates to **Create Bounty**, the platform first verifies both the
 
 Clicking **Connect** opens the **Freighter** browser extension. The wallet shows the site's domain, the connected wallet address, and the active network (Testnet) before the user approves the connection.
 
-![Freighter wallet connection request popup over the Create Bounty page](Screenshot%202026-07-31%20090216.png)
+![Freighter wallet connection request popup over the Create Bounty page](docs/screenshots/screenshot-2026-07-31-090216.png)
 
 ---
 
@@ -84,7 +84,7 @@ The **Bounties** page lists all on-chain bounties with search, filter by status 
 
 > The screenshot shows a real, completed **250 XLM** bounty linked to `Tusharkhadde/Second_Brain/issues/1` — marked **Paid out**.
 
-![Bounties list showing a 250 XLM paid-out bounty for Tusharkhadde/Second_Brain/issues/1](Screenshot%202026-07-31%20090302.png)
+![Bounties list showing a 250 XLM paid-out bounty for Tusharkhadde/Second_Brain/issues/1](docs/screenshots/screenshot-2026-07-31-090302.png)
 
 ---
 
@@ -92,7 +92,7 @@ The **Bounties** page lists all on-chain bounties with search, filter by status 
 
 Clicking into a bounty reveals the **full lifecycle tracker**: a 5-stage stepper (Created → Funded → PR Linked → Verified → Paid) with real-time progress and a completion percentage. The screenshot shows **100% COMPLETE** for the 250 XLM bounty.
 
-![Bounty detail page showing 5-step stepper at 100% complete with "Bounty completed! 🎉"](Screenshot%202026-07-31%20094410.png)
+![Bounty detail page showing 5-step stepper at 100% complete with "Bounty completed! 🎉"](docs/screenshots/screenshot-2026-07-31-094410.png)
 
 ---
 
@@ -100,15 +100,15 @@ Clicking into a bounty reveals the **full lifecycle tracker**: a 5-stage stepper
 
 The bounty detail page also shows the **Linked GitHub Issue**, the **Submitted Pull Request** (with merge status), the **Contributor wallet address** that received payment, and the **Escrow Specs** sidebar with deadline and creator address.
 
-![Bounty detail showing linked issue URL, submitted PR marked "Merged", contributor wallet, and escrow specs](Screenshot%202026-07-31%20094317.png)
+![Bounty detail showing linked issue URL, submitted PR marked "Merged", contributor wallet, and escrow specs](docs/screenshots/screenshot-2026-07-31-094317.png)
 
 ---
 
 ### 8. 👤 Profile — Contributor Stats & Payout Addresses
 
-The **Profile** page shows the connected Stellar address, role badge (Hunter / Developer), member date, and four stat cards: **Total Earned (250 XLM)**, **Bounties Funded**, **Saved Wallets**, and **Trust Rating (100% — Soroban Verified)**. Users can also add multi-chain payout addresses here.
+The **Profile** page shows the connected Stellar address, role badge (Hunter / Developer), member date, and four stat cards: **Total Earned (250 XLM)**, **Bounties Funded**, **Saved Wallets**, and **GitHub** (whether your GitHub session is linked). (The screenshot predates removal of an old "Trust Rating" card that had no defined meaning.) Users can also add multi-chain payout addresses here.
 
-![Profile page for Tusharkhadde showing 250 XLM earned, 1 bounty funded, and 100% trust rating](Screenshot%202026-07-31%20090343.png)
+![Profile page for Tusharkhadde showing 250 XLM earned and 1 bounty funded](docs/screenshots/screenshot-2026-07-31-090343.png)
 
 ---
 
@@ -157,14 +157,14 @@ The **Profile** page shows the connected Stellar address, role badge (Hunter / D
 
 | Feature | Description |
 |---|---|
-| 🔒 **Trustless Escrow** | Funds are locked in Soroban smart contracts. Neither party can tamper with escrowed tokens unilaterally. |
+| 🔒 **On-chain Escrow** | Funds are held by the BountyRegistry contract, not a server wallet. Release requires a valid merge proof from the authorized relay. |
 | ⚡ **Automated Payouts** | When a PR is merged, the Oracle Relay verifies the merge commit, signs an Ed25519 proof, and triggers instant on-chain payout. |
 | 🐙 **GitHub OAuth** | Integrated GitHub authentication validates issue URLs and user identity before bounty creation. |
 | 🛑 **Cancellation & Refunds** | Maintainers can cancel unfunded or expired bounties and safely reclaim escrowed tokens. |
 | 📊 **Personal Dashboard** | Track bounties created, bounties solved, total XLM earned, and live status per bounty. |
 | 🗄️ **Persistent Database** | Powered by **Prisma 7 ORM** + **Neon PostgreSQL** with automatic failover to serverless cloud storage. |
 | 🎨 **Dark Stellar UI** | Built with Next.js 14, Tailwind CSS, Shadcn UI primitives, micro-animations, and fully responsive design (375px+). |
-| 🔑 **Non-Custodial** | Only the user's Freighter wallet signs transactions. No server holds private keys or custody of funds. |
+| 🔑 **No server custody of funds** | Maintainers sign funding from their own Freighter wallet. The relay holds a signing key that authorizes payouts, but never holds the bounty funds. |
 
 ---
 
@@ -213,7 +213,10 @@ sequenceDiagram
 1. **Ed25519 Cryptographic Proofs** — Merge proofs are signed using the Relay's private key and scoped to a unique `(bounty_id, pr_url, merge_commit_sha)` tuple.
 2. **Replay Protection** — Each proof tuple can only be submitted once. Duplicates are rejected by smart contract assertions.
 3. **GitHub API Double-Check** — The Oracle Relay verifies every webhook event against GitHub's official REST API to prevent spoofed payloads.
-4. **Non-Custodial Design** — No server process, AI agent, or relay node holds private keys or user funds. All escrow authority rests inside Soroban contracts.
+4. **Custody** — Bounty funds are held by the Soroban contract, never by a server wallet.
+5. **Trust assumption (be aware)** — Payout release is authorized by **one relay key** (`RELAY_PRIVATE_KEY`, registered on-chain via `set_authorized_caller`). Whoever controls that key can approve a payout for any linked PR, so the relay is a trusted oracle, not a trustless one. Keep the key in a secrets manager, rotate it if exposed, and treat this as testnet-grade until the roadmap items below land.
+6. **Roadmap to reduce trust** — threshold/multisig relay signatures (e.g. 2-of-3 independent verifiers), a dispute window before funds release, and a maintainer co-sign option. A protocol fee proposal is in [docs/PROPOSAL-protocol-fee.md](docs/PROPOSAL-protocol-fee.md).
+7. **Current web-app limitation** — the "Create Bounty" form saves the bounty via `POST /api/bounties`; it does not yet sign a `fund_bounty` transaction with Freighter. On-chain funding is done against the contract directly until that call is wired into the form.
 
 ---
 

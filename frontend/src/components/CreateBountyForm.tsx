@@ -30,7 +30,7 @@ export function CreateBountyForm() {
   const [formData, setFormData] = useState<CreateBountyFormData>({
     issueUrl: '',
     amount: '250',
-    token: 'XLM',
+    token: 'USDC',
     deadline: Math.floor(Date.now() / 1000 + 30 * 86400).toString(),
   })
 
@@ -178,7 +178,7 @@ export function CreateBountyForm() {
               setFormData({
                 issueUrl: '',
                 amount: '250',
-                token: 'XLM',
+                token: 'USDC',
                 deadline: Math.floor(Date.now() / 1000 + 30 * 86400).toString(),
               })
             }}
@@ -202,7 +202,7 @@ export function CreateBountyForm() {
             </div>
             <div>
               <h2 className="text-xl font-bold text-white">Create Soroban Bounty Escrow</h2>
-              <p className="text-xs text-slate-400">Lock XLM/USDC in smart contract until GitHub PR merges</p>
+              <p className="text-xs text-slate-400">Lock USDC or XLM in smart contract until GitHub PR merges</p>
             </div>
           </div>
           <span className="text-xs font-semibold px-3 py-1 rounded-full bg-teal-500/10 text-teal-300 border border-teal-500/20">
@@ -330,8 +330,8 @@ export function CreateBountyForm() {
                 onChange={(e) => setFormData(prev => ({ ...prev, token: e.target.value }))}
                 className="w-full px-3.5 py-3 rounded-md bg-slate-900 border border-white/10 text-slate-200 text-sm focus:border-teal-400 outline-none"
               >
-                <option value="XLM">XLM — Stellar Lumens (Native)</option>
-                <option value="USDC">USDC — Circle USD Stablecoin</option>
+                <option value="USDC">USDC — USD stablecoin (recommended: stable dollar value)</option>
+                <option value="XLM">XLM — Stellar Lumens (native, price varies)</option>
               </select>
             </div>
           </div>

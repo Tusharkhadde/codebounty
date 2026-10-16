@@ -17,7 +17,7 @@ export default function CreateBountyPage() {
         </Link>
         <h1 className="heading-lg">Create a bounty</h1>
         <p className="text-sm text-zinc-400 leading-relaxed">
-          Attach XLM or USDC rewards to open GitHub issues. Funds are locked safely in a Soroban smart-contract escrow on Stellar until the solver&apos;s pull request is verified as merged.
+          Attach USDC or XLM rewards to open GitHub issues. Funds are locked safely in a Soroban smart-contract escrow on Stellar until the solver&apos;s pull request is verified as merged.
         </p>
       </header>
 
